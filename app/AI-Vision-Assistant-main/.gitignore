@@ -1,0 +1,22 @@
+# Virtual Environment
+venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+
+# YOLO generated files
+runs/
+
+# Output images
+output/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# YOLO model
+*.pt

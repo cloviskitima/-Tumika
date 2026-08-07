@@ -1,0 +1,48 @@
+# =====================================================================
+#  MotoStockIA #TUMIKA — Dépendances Python
+# =====================================================================
+#  Installation sur un autre PC :
+#      python -m pip install -r requirements.txt
+#
+#  Python requis : 3.10+ (testé avec Python 3.12, Windows 64 bits)
+#
+#  ATTENTION : certaines dépendances ne sont PAS installées par pip.
+#  Voir la section « DÉPENDANCES SYSTÈME » en bas de ce fichier.
+# =====================================================================
+
+# ---- Framework Web ----
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.5
+
+# ---- Vision / IA : reconnaissance produits (OCR + code-barres + YOLO + signature visuelle) ----
+numpy==2.5.1
+opencv-python-headless==5.0.0.93
+pytesseract==0.3.13
+ultralytics==8.4.115
+pyzbar==0.1.9
+RapidFuzz==3.14.5
+pillow==12.3.0
+
+# ---- Utilitaires code-barres / QR (génération d'images de test) ----
+qrcode==8.2
+python-barcode==0.16.1
+
+# =====================================================================
+#  DÉPENDANCES SYSTÈME (à installer une fois, en dehors de pip)
+# =====================================================================
+#  1) TESSERACT OCR 5.x  → OBLIGATOIRE pour la lecture de texte / OCR
+#     Windows :  winget install --id UB-Mannheim.TesseractOCR -e
+#                (installe dans C:\Program Files\Tesseract-OCR\tesseract.exe)
+#     L'application cherche automatiquement :
+#        - C:\Program Files\Tesseract-OCR\tesseract.exe
+#        - C:\Program Files (x86)\Tesseract-OCR\tesseract.exe
+#        - tesseract présent dans le PATH
+#
+#  2) Modèle YOLO  → app\vision\models\yolov8n.pt
+#     (fourni avec le projet. S'il manque, ultralytics le télécharge
+#      automatiquement au premier usage)
+#
+#  3) Langues OCR  → app\vision\tessdata\{eng,fra}.traineddata
+#     (déjà fournies avec le projet, rien à faire)
+# =====================================================================

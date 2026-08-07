@@ -1,0 +1,1370 @@
+{% extends "base.html" %}
+
+{% block title %}Paramètres | MotoStockIA - #TUMIKA{% endblock %}
+{% block page_title %}Paramètres{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-hero {
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%);
+        border-radius: 16px;
+        padding: 28px 32px;
+        color: white;
+        box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.3);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+    .dashboard-hero::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .settings-layout {
+        display: grid;
+        grid-template-columns: 290px 1fr;
+        gap: 24px;
+        align-items: start;
+    }
+    @media (max-width: 992px) {
+        .settings-layout { grid-template-columns: 1fr; }
+    }
+
+    .settings-nav {
+        background: #ffffff;
+        border: 1px solid var(--gray-200);
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        padding: 12px;
+        position: sticky;
+        top: 24px;
+    }
+    .settings-nav-title {
+        padding: 10px 14px 8px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--gray-500);
+    }
+    .settings-nav-link {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 13px 14px;
+        border-radius: 12px;
+        color: var(--gray-700);
+        text-decoration: none;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        width: 100%;
+        text-align: left;
+        font-family: inherit;
+        font-size: 0.95rem;
+    }
+    .settings-nav-link .nav-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
+        background: var(--gray-100);
+        color: var(--gray-500);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.15rem;
+        flex-shrink: 0;
+        transition: all 0.2s ease;
+    }
+    .settings-nav-link .nav-text b { display: block; font-weight: 700; font-size: 0.93rem; }
+    .settings-nav-link .nav-text span { display: block; font-size: 0.75rem; color: var(--gray-500); }
+    .settings-nav-link:hover { background: var(--gray-100); }
+    .settings-nav-link.active {
+        background: linear-gradient(135deg, #1e3a8a, #1e40af);
+        color: white;
+        box-shadow: 0 6px 15px -5px rgba(30, 58, 138, 0.4);
+    }
+    .settings-nav-link.active .nav-icon { background: rgba(255,255,255,0.18); color: white; }
+    .settings-nav-link.active .nav-text span { color: rgba(255,255,255,0.75); }
+
+    .settings-panel { display: none; }
+    .settings-panel.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .settings-card {
+        background: #ffffff;
+        border: 1px solid var(--gray-200);
+        border-radius: 16px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        padding: 26px;
+        margin-bottom: 20px;
+    }
+    .settings-card-header {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        margin-bottom: 22px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--gray-100);
+    }
+    .settings-card-header .head-icon {
+        width: 46px;
+        height: 46px;
+        border-radius: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+    }
+    .head-icon.primary { background: rgba(30, 58, 138, 0.1); color: #1e3a8a; }
+    .head-icon.success { background: rgba(16, 185, 129, 0.12); color: #059669; }
+    .head-icon.warning { background: rgba(245, 158, 11, 0.12); color: #d97706; }
+    .head-icon.indigo { background: rgba(99, 102, 241, 0.12); color: #4f46e5; }
+    .head-icon.danger { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+    .head-icon.info { background: rgba(6, 182, 212, 0.12); color: #0891b2; }
+    .settings-card-header h3 { margin: 0; font-size: 1.08rem; font-weight: 800; color: var(--gray-900); }
+    .settings-card-header p { margin: 2px 0 0; font-size: 0.84rem; color: var(--gray-500); }
+
+    .form-label { font-weight: 700; font-size: 0.82rem; color: var(--gray-700); margin-bottom: 6px; display: block; }
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 1px solid var(--gray-300);
+        padding: 10px 14px;
+        font-size: 0.92rem;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.12);
+    }
+
+    .toggle-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 16px;
+        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        margin-bottom: 12px;
+        transition: all 0.2s ease;
+    }
+    .toggle-row:hover { border-color: var(--gray-300); background: var(--gray-100); }
+    .toggle-row b { font-size: 0.93rem; display: block; }
+    .toggle-row span { font-size: 0.8rem; color: var(--gray-500); }
+    .form-switch .form-check-input { width: 3em; height: 1.5em; cursor: pointer; }
+    .form-check-input:checked { background-color: #059669; border-color: #059669; }
+
+    .color-swatch {
+        width: 42px; height: 42px; border-radius: 12px;
+        cursor: pointer; border: 3px solid transparent;
+        transition: all 0.2s ease;
+    }
+    .color-swatch.active { border-color: var(--gray-900); transform: scale(1.08); }
+    .color-swatch:hover { transform: scale(1.08); }
+
+    .rate-card {
+        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        padding: 14px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+    }
+    .rate-card .rate-pair { display: flex; align-items: center; gap: 10px; }
+    .devise-badge {
+        padding: 5px 12px;
+        border-radius: 9px;
+        font-weight: 800;
+        font-size: 0.82rem;
+    }
+    .devise-badge.usd { background: #d1fae5; color: #065f46; }
+    .devise-badge.cdf { background: #e0e7ff; color: #3730a3; }
+
+    .btn-primary { background: var(--primary); border-color: var(--primary); border-radius: 10px; font-weight: 700; }
+    .btn-primary:hover { background: #1e40af; border-color: #1e40af; }
+    .btn-outline-danger { border-radius: 10px; font-weight: 600; }
+
+    .save-bar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+        padding-top: 18px;
+        border-top: 1px solid var(--gray-100);
+    }
+
+    .password-strength { height: 6px; border-radius: 4px; background: var(--gray-200); margin-top: 10px; overflow: hidden; }
+    .password-strength div { height: 100%; width: 0; border-radius: 4px; transition: all 0.3s ease; }
+    .strength-label { font-size: 0.75rem; font-weight: 700; margin-top: 6px; }
+
+    .stat-mini {
+        background: var(--gray-100);
+        border-radius: 12px;
+        padding: 14px 18px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .stat-mini i { font-size: 1.3rem; color: var(--primary); }
+    .stat-mini b { display: block; font-size: 1.05rem; }
+    .stat-mini span { font-size: 0.75rem; color: var(--gray-500); }
+
+    .danger-zone {
+        border: 1px solid #fee2e2;
+        background: #fff7f7;
+        border-radius: 16px;
+        padding: 24px;
+    }
+    .empty-hint { color: var(--gray-500); font-size: 0.88rem; }
+
+    .day-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--gray-100);
+        border: 1px solid var(--gray-200);
+        border-radius: 9px;
+        padding: 7px 12px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--gray-600);
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.2s ease;
+    }
+    .day-chip:hover { border-color: var(--primary); }
+    .day-chip input { accent-color: #1e3a8a; cursor: pointer; }
+    .day-chip:has(input:checked) { background: rgba(30,58,138,0.1); border-color: var(--primary); color: var(--primary); }
+
+    .recap-table th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--gray-500); border-bottom: 2px solid var(--gray-200); }
+    .recap-table td { padding: 10px 12px; vertical-align: middle; font-size: 0.9rem; border-color: var(--gray-100); }
+    .recap-table tr:hover td { background: #f8fafc; }
+    .recap-table .recap-label { font-weight: 800; color: var(--gray-700); }
+    .recap-flash { box-shadow: 0 0 0 3px rgba(30,58,138,0.35) !important; transition: box-shadow 0.2s ease; }
+</style>
+
+<!-- Hero -->
+<div class="dashboard-hero">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; position: relative; z-index: 1;">
+        <div>
+            <h2 style="margin: 0 0 6px 0; font-weight: 800; font-size: 1.75rem; letter-spacing: -0.5px;">⚙️ Paramètres & Configuration</h2>
+            <p style="margin: 0; opacity: 0.88; font-size: 0.98rem;">Personnalisez votre espace de travail : entreprise, sécurité, notifications, devises et données.</p>
+        </div>
+        <button class="btn btn-light btn-sm" onclick="saveActivePanel()" style="border-radius: 10px; font-weight: 600; padding: 8px 16px;">
+            <i class="bi bi-check2-circle"></i> Enregistrer
+        </button>
+    </div>
+</div>
+
+<div class="settings-layout">
+    <!-- ==================== NAVIGATION ==================== -->
+    <nav class="settings-nav">
+        <div class="settings-nav-title">Configuration</div>
+        <button class="settings-nav-link active" data-panel="general">
+            <span class="nav-icon"><i class="bi bi-buildings"></i></span>
+            <span class="nav-text"><b>Entreprise</b><span>Informations générales</span></span>
+        </button>
+        <button class="settings-nav-link" data-panel="security">
+            <span class="nav-icon"><i class="bi bi-shield-lock"></i></span>
+            <span class="nav-text"><b>Profil & Sécurité</b><span>Compte, mot de passe</span></span>
+        </button>
+        <button class="settings-nav-link" data-panel="notifications">
+            <span class="nav-icon"><i class="bi bi-bell"></i></span>
+            <span class="nav-text"><b>Notifications</b><span>Alertes & alertes sonores</span></span>
+        </button>
+        <button class="settings-nav-link" data-panel="exchange">
+            <span class="nav-icon"><i class="bi bi-currency-exchange"></i></span>
+            <span class="nav-text"><b>Taux de change</b><span>FC / USD</span></span>
+        </button>
+        <button class="settings-nav-link" data-panel="appearance">
+            <span class="nav-icon"><i class="bi bi-palette"></i></span>
+            <span class="nav-text"><b>Apparence</b><span>Thème & couleurs</span></span>
+        </button>
+        <button class="settings-nav-link" data-panel="rapportemail">
+            <span class="nav-icon"><i class="bi bi-envelope-paper"></i></span>
+            <span class="nav-text"><b>Rapports Email</b><span>Envois automatiques quotidiens</span></span>
+        </button>
+        <button class="settings-nav-link" data-panel="data">
+            <span class="nav-icon"><i class="bi bi-database-check"></i></span>
+            <span class="nav-text"><b>Données</b><span>Sauvegarde & export</span></span>
+        </button>
+    </nav>
+
+    <!-- ==================== CONTENU ==================== -->
+    <div>
+        <!-- ──── ENTREPRISE ──── -->
+        <div id="general" class="settings-panel active">
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon primary"><i class="bi bi-buildings"></i></div>
+                    <div>
+                        <h3>Informations de l'entreprise</h3>
+                        <p>Ces informations apparaissent sur vos documents et factures.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nom de l'entreprise</label>
+                        <input type="text" id="pNomEntreprise" class="form-control" placeholder="Nom de votre entreprise">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Slogan</label>
+                        <input type="text" id="pSlogan" class="form-control" placeholder="Votre slogan">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Adresse</label>
+                        <input type="text" id="pAdresse" class="form-control" placeholder="Adresse complète">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Téléphone</label>
+                        <input type="text" id="pTelephone" class="form-control" placeholder="+243 ...">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email de contact</label>
+                        <input type="email" id="pEmail" class="form-control" placeholder="contact@entreprise.cd">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Devise principale</label>
+                        <select id="pDevise" class="form-select">
+                            <option value="USD">USD — Dollar américain ($)</option>
+                            <option value="CDF">FC — Franc congolais</option>
+                            <option value="XAF">XAF — Franc CFA</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="save-bar">
+                    <button class="btn btn-primary" onclick="saveGeneral()"><i class="bi bi-check-lg"></i> Enregistrer les informations</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ──── SÉCURITÉ ──── -->
+        <div id="security" class="settings-panel">
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon indigo"><i class="bi bi-person-badge"></i></div>
+                    <div>
+                        <h3>Profil du compte</h3>
+                        <p>Votre identité sur la plateforme.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nom d'utilisateur</label>
+                        <input type="text" id="pUsername" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <input type="email" id="pUserEmail" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Nom complet</label>
+                        <input type="text" id="pUserFullname" class="form-control" readonly>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Rôle</label>
+                        <input type="text" id="pUserRole" class="form-control" readonly>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon danger"><i class="bi bi-shield-lock"></i></div>
+                    <div>
+                        <h3>Changer le mot de passe</h3>
+                        <p>Utilisez un mot de passe fort et unique.</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Mot de passe actuel</label>
+                        <input type="password" id="pCurrentPwd" class="form-control" autocomplete="current-password">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Nouveau mot de passe</label>
+                        <input type="password" id="pNewPwd" class="form-control" autocomplete="new-password" oninput="checkStrength(this.value)">
+                        <div class="password-strength"><div id="pwdStrengthBar"></div></div>
+                        <div class="strength-label" id="pwdStrengthLabel"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Confirmer le nouveau mot de passe</label>
+                        <input type="password" id="pConfirmPwd" class="form-control" autocomplete="new-password">
+                    </div>
+                </div>
+                <div class="save-bar">
+                    <button class="btn btn-primary" onclick="changePassword()"><i class="bi bi-key"></i> Changer le mot de passe</button>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon warning"><i class="bi bi-clock-history"></i></div>
+                    <div>
+                        <h3>Journal de connexion</h3>
+                        <p>Historique des connexions récentes à votre compte.</p>
+                    </div>
+                </div>
+                <div id="loginHistoryList" class="empty-hint">Chargement...</div>
+            </div>
+        </div>
+
+        <!-- ──── NOTIFICATIONS ──── -->
+        <div id="notifications" class="settings-panel">
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon success"><i class="bi bi-bell"></i></div>
+                    <div>
+                        <h3>Préférences de notifications</h3>
+                        <p>Choisissez comment vous souhaitez être alerté.</p>
+                    </div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>Notifications par email</b><span>Recevoir les alertes importantes par email</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pNotifEmail"></div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>Alertes stock faible</b><span>Notifier quand un produit passe sous son stock minimum</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pNotifStock"></div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>Alertes nouvelles ventes</b><span>Notifier à chaque nouvelle vente enregistrée</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pNotifVentes"></div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>Notifications sonores</b><span>Émettre un bip sonore lors des alertes</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pNotifSon"></div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label">Type de son</label>
+                        <select id="pSoundType" class="form-select">
+                            <option value="sine">Sine — Doux</option>
+                            <option value="square">Square — Aigu</option>
+                            <option value="sawtooth">Sawtooth — Moyen</option>
+                            <option value="triangle">Triangle — Équilibré</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Fréquence : <span id="pFreqValue">800 Hz</span></label>
+                        <input type="range" id="pSoundFreq" min="200" max="2000" value="800" class="form-range" style="width: 100%;" oninput="document.getElementById('pFreqValue').textContent = this.value + ' Hz';">
+                        <div class="d-flex justify-content-between" style="font-size: 0.75rem; color: var(--gray-500);">
+                            <span>200 Hz (grave)</span><span>2000 Hz (aigu)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="save-bar">
+                    <button class="btn btn-light" onclick="testSound()"><i class="bi bi-volume-up"></i> Tester le son</button>
+                    <button class="btn btn-primary" onclick="saveNotifications()"><i class="bi bi-check-lg"></i> Enregistrer les préférences</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ──── TAUX DE CHANGE ──── -->
+        <div id="exchange" class="settings-panel">
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon warning"><i class="bi bi-currency-exchange"></i></div>
+                    <div>
+                        <h3>Taux de change</h3>
+                        <p>Gérez les taux entre le Franc congolais (FC) et le Dollar américain (USD).</p>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Devise source</label>
+                        <select id="deviseSource" class="form-select">
+                            <option value="USD">USD — Dollar ($)</option>
+                            <option value="CDF">FC — Franc congolais</option>
+                            <option value="XAF">XAF — Franc CFA</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Devise cible</label>
+                        <select id="deviseCible" class="form-select">
+                            <option value="CDF">FC — Franc congolais</option>
+                            <option value="USD">USD — Dollar ($)</option>
+                            <option value="XAF">XAF — Franc CFA</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Taux</label>
+                        <div class="input-group">
+                            <input type="number" id="tauxValue" class="form-control" placeholder="Ex : 2800" step="0.0001" min="0">
+                            <button class="btn btn-primary" onclick="addTauxChange()"><i class="bi bi-plus-lg"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div id="tauxChangeList">
+                    <p class="empty-hint">Chargement...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ──── APPARENCE ──── -->
+        <div id="appearance" class="settings-panel">
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon primary"><i class="bi bi-palette"></i></div>
+                    <div>
+                        <h3>Apparence de l'interface</h3>
+                        <p>Personnalisez l'identité visuelle de votre application.</p>
+                    </div>
+                </div>
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <label class="form-label">Thème</label>
+                        <select id="pTheme" class="form-select">
+                            <option value="light">Clair</option>
+                            <option value="dark">Sombre</option>
+                            <option value="auto">Automatique</option>
+                        </select>
+                        <div class="empty-hint mt-2">Le thème est appliqué sur cette page.</div>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">Couleur principale</label>
+                        <div id="colorSwatches" style="display: flex; gap: 12px; flex-wrap: wrap;"></div>
+                        <div class="empty-hint mt-2">La couleur principale est appliquée instantanément sur toute l'application (boutons, liens, menus).</div>
+                    </div>
+                </div>
+                <div class="save-bar">
+                    <button class="btn btn-primary" onclick="saveAppearance()"><i class="bi bi-check-lg"></i> Appliquer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ──── RAPPORTS EMAIL ──── -->
+        <div id="rapportemail" class="settings-panel">
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon success"><i class="bi bi-envelope-paper"></i></div>
+                    <div>
+                        <h3>Rapports quotidiens par email</h3>
+                        <p>Chaque jour, l'application envoie automatiquement le rapport des ventes, du stock et de la caisse à vos responsables.</p>
+                    </div>
+                </div>
+                <div class="toggle-row">
+                    <div>
+                        <b>Activer les rapports automatiques</b>
+                        <span>Les rapports partent selon le programme ci-dessous. Hors connexion internet, ils sont mis en attente puis envoyés automatiquement dès que l'application est de nouveau en ligne.</span>
+                    </div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="reEmailActif" onchange="reChangerActivation()"></div>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon indigo"><i class="bi bi-envelope-at"></i></div>
+                    <div>
+                        <h3>Adresses email & envoi</h3>
+                        <p>Qui reçoit les rapports, à quelle heure, et avec quel serveur d'envoi (SMTP).</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Emails des responsables (séparés par une virgule ou un retour à la ligne)</label>
+                        <textarea id="reEmails" class="form-control" rows="2" placeholder="chef.stock@exemple.com, directeur@exemple.com"></textarea>
+                        <div class="d-flex gap-2 mt-2" style="max-width: 460px;">
+                            <input type="email" id="reAjoutEmail" class="form-control form-control-sm" placeholder="Ajouter un destinataire..." onkeydown="if(event.key==='Enter'){event.preventDefault();reAjouterDestinataire();}">
+                            <button class="btn btn-sm btn-light" onclick="reAjouterDestinataire()" style="white-space:nowrap;"><i class="bi bi-plus-lg"></i> Ajouter</button>
+                        </div>
+                        <div class="empty-hint mt-2" id="reDestHint"><i class="bi bi-info-circle"></i> Si vide, les rapports iront à l'adresse d'envoi SMTP (ou à l'email de l'entreprise).</div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Heure d'envoi</label>
+                        <input type="time" id="reHeure" class="form-control" value="07:00">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">Jours d'envoi</label>
+                        <div id="reJours" style="display:flex; flex-wrap:wrap; gap:8px; padding-top:6px;">
+                            <label class="day-chip"><input type="checkbox" value="1"> Lun</label>
+                            <label class="day-chip"><input type="checkbox" value="2"> Mar</label>
+                            <label class="day-chip"><input type="checkbox" value="3"> Mer</label>
+                            <label class="day-chip"><input type="checkbox" value="4"> Jeu</label>
+                            <label class="day-chip"><input type="checkbox" value="5"> Ven</label>
+                            <label class="day-chip"><input type="checkbox" value="6"> Sam</label>
+                            <label class="day-chip"><input type="checkbox" value="7"> Dim</label>
+                            <span class="empty-hint" style="align-self:center; margin-left:4px;">Aucun jour coché = tous les jours</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="background:#f8fafc;border:1px solid var(--gray-200);border-radius:12px;padding:14px 16px;margin-top:16px;">
+                    <div style="font-weight:800;font-size:0.9rem;color:var(--gray-800);margin-bottom:10px;">
+                        <i class="bi bi-server"></i> Serveur SMTP (fourni par votre messagerie, ex : Gmail, Outlook)
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Serveur SMTP</label>
+                            <input type="text" id="reSmtpServeur" class="form-control" placeholder="smtp.gmail.com">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Port</label>
+                            <input type="number" id="reSmtpPort" class="form-control" value="587">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Sécurité</label>
+                            <select id="reSmtpSecurite" class="form-select">
+                                <option value="starttls">STARTTLS (587)</option>
+                                <option value="ssl">SSL (465)</option>
+                                <option value="none">Aucune</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Nom affiché (expéditeur)</label>
+                            <input type="text" id="reSmtpNom" class="form-control" placeholder="MotoStockIA">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Adresse d'envoi (utilisateur SMTP)</label>
+                            <input type="email" id="reSmtpUser" class="form-control" placeholder="votre.app@gmail.com">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Mot de passe / mot de passe d'application</label>
+                            <input type="password" id="reSmtpMdp" class="form-control" placeholder="•••••••• (laisser vide pour ne pas changer)" autocomplete="new-password">
+                        </div>
+                    </div>
+                    <div class="empty-hint mt-2">
+                        <i class="bi bi-info-circle"></i> Pour Gmail : créez un « mot de passe d'application » dans votre compte Google (sécurité → vérification en 2 étapes). Laissez le champ mot de passe vide si vous ne voulez pas le modifier.
+                    </div>
+                </div>
+                <div class="save-bar">
+                    <button class="btn btn-light" onclick="reEnvoyerTest()"><i class="bi bi-send"></i> Envoyer un email de test</button>
+                    <button class="btn btn-primary" onclick="reEnregistrer()"><i class="bi bi-check-lg"></i> Enregistrer la configuration</button>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon warning"><i class="bi bi-hourglass-split"></i></div>
+                    <div>
+                        <h3>File d'attente des rapports</h3>
+                        <p>Les rapports programmés (y compris ceux des jours où l'application était hors ligne) sont envoyés dès qu'internet revient.</p>
+                    </div>
+                </div>
+                <div id="reEtatBox" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:16px;">
+                    <div class="stat-mini"><i class="bi bi-hourglass-split"></i><div><b id="reNbAttente">-</b><span>En attente</span></div></div>
+                    <div class="stat-mini"><i class="bi bi-send-check"></i><div><b id="reNbEnvoyes">-</b><span>Envoyés</span></div></div>
+                    <div class="stat-mini"><i class="bi bi-exclamation-circle"></i><div><b id="reNbErreurs">-</b><span>En erreur</span></div></div>
+                    <div class="stat-mini"><i class="bi bi-clock"></i><div><b id="reDernierEnvoi">-</b><span>Dernier envoi</span></div></div>
+                </div>
+                <div id="reErreurBox" class="empty-hint" style="display:none; background:#fff7f7;border:1px solid #fee2e2;border-radius:10px;padding:10px 14px;margin-bottom:14px;color:#991b1b;"></div>
+                <div class="d-flex gap-2 flex-wrap" style="margin-bottom:16px;">
+                    <button class="btn btn-primary" onclick="reEnvoyerMaintenant()"><i class="bi bi-send-fill"></i> Envoyer maintenant tout ce qui est en attente</button>
+                </div>
+                <div id="reJournal">
+                    <p class="empty-hint">Chargement...</p>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon success"><i class="bi bi-card-list"></i></div>
+                    <div>
+                        <h3>Configuration enregistrée</h3>
+                        <p>Ce qui est actuellement enregistré pour l'envoi des rapports. Cliquez sur « Modifier » pour changer une valeur, puis « Enregistrer la configuration » pour l'appliquer.</p>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table recap-table" style="margin:0;">
+                        <thead>
+                            <tr><th>Élément</th><th>Valeur enregistrée</th><th style="width:110px;text-align:right;">Action</th></tr>
+                        </thead>
+                        <tbody id="reRecapBody">
+                            <tr><td colspan="3" class="empty-hint">Chargement...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ──── DONNÉES ──── -->
+        <div id="data" class="settings-panel">
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon info"><i class="bi bi-database"></i></div>
+                    <div>
+                        <h3>Sauvegarde & Export</h3>
+                        <p>Téléchargez l'ensemble de vos données pour les archiver ou les transférer.</p>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px;">
+                    <div class="stat-mini"><i class="bi bi-box-seam"></i><div><b id="statProduits">-</b><span>Produits</span></div></div>
+                    <div class="stat-mini"><i class="bi bi-cart3"></i><div><b id="statVentes">-</b><span>Ventes</span></div></div>
+                    <div class="stat-mini"><i class="bi bi-cash"></i><div><b id="statCaisse">-</b><span>Mouvements</span></div></div>
+                    <div class="stat-mini"><i class="bi bi-journal-text"></i><div><b id="statEcritures">-</b><span>Écritures</span></div></div>
+                </div>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="exportJSON()" style="border-radius: 10px; font-weight: 700;">
+                        <i class="bi bi-download"></i> Exporter tout (JSON)
+                    </button>
+                    <button class="btn btn-light" onclick="exportCSV()" style="border-radius: 10px; font-weight: 700;">
+                        <i class="bi bi-filetype-csv"></i> Exporter produits (CSV)
+                    </button>
+                    <button class="btn btn-light" onclick="exportVentesCSV()" style="border-radius: 10px; font-weight: 700;">
+                        <i class="bi bi-filetype-csv"></i> Exporter ventes (CSV)
+                    </button>
+                </div>
+            </div>
+
+            <div class="danger-zone">
+                <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
+                    <div class="head-icon danger"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #991b1b;">Zone de danger</h3>
+                        <p style="margin: 2px 0 0; font-size: 0.85rem; color: var(--gray-500);">Ces actions sont irréversibles. Exportez vos données avant toute suppression.</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <input type="text" id="resetConfirmInput" class="form-control" placeholder="Tapez SUPPRIMER pour confirmer" style="max-width: 300px; border-color: #fecaca;">
+                    <button class="btn btn-danger" onclick="resetAllData()" style="border-radius: 10px; font-weight: 700;">
+                        <i class="bi bi-trash3"></i> Supprimer toutes les données
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let settingsData = null;
+
+const COLORS = ['#1e3a8a', '#059669', '#dc2626', '#d97706', '#7c3aed', '#0891b2', '#0f172a'];
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadSettings();
+    setupNav();
+    setupColorSwatches();
+    loadTauxChange();
+    loadLoginHistory();
+    loadStatMini();
+    loadRapportEmail();
+});
+
+function setupNav() {
+    document.querySelectorAll('.settings-nav-link').forEach(link => {
+        link.addEventListener('click', function() {
+            document.querySelectorAll('.settings-nav-link').forEach(l => l.classList.remove('active'));
+            document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+            this.classList.add('active');
+            document.getElementById(this.dataset.panel).classList.add('active');
+        });
+    });
+}
+
+function saveActivePanel() {
+    const active = document.querySelector('.settings-panel.active');
+    if (!active) return;
+    if (active.id === 'general') saveGeneral();
+    else if (active.id === 'notifications') saveNotifications();
+    else if (active.id === 'appearance') saveAppearance();
+    else if (active.id === 'rapportemail') reEnregistrer();
+    else showToast('Rien à enregistrer sur cette section', 'info');
+}
+
+// ==================== CHARGEMENT ====================
+async function loadSettings() {
+    try {
+        const r = await fetch('/api/settings');
+        const d = await r.json();
+        if (!d.success) return;
+        settingsData = d;
+        const p = d.parametres;
+
+        document.getElementById('pNomEntreprise').value = p.nom_entreprise || '';
+        document.getElementById('pSlogan').value = p.slogan || '';
+        document.getElementById('pAdresse').value = p.adresse || '';
+        document.getElementById('pTelephone').value = p.telephone || '';
+        document.getElementById('pEmail').value = p.email || '';
+        document.getElementById('pDevise').value = p.devise_principale || 'USD';
+
+        document.getElementById('pNotifEmail').checked = p.notif_email === 'true';
+        document.getElementById('pNotifStock').checked = p.notif_stock_faible === 'true';
+        document.getElementById('pNotifVentes').checked = p.notif_nouvelles_ventes === 'true';
+        document.getElementById('pNotifSon').checked = p.notif_son === 'true';
+        document.getElementById('pSoundType').value = p.alert_sound_type || 'sine';
+        document.getElementById('pSoundFreq').value = p.alert_sound_frequency || '800';
+        document.getElementById('pFreqValue').textContent = (p.alert_sound_frequency || '800') + ' Hz';
+
+        document.getElementById('pTheme').value = p.theme || 'light';
+        applyColor(p.couleur_principale || '#1e3a8a');
+
+        if (d.user) {
+            document.getElementById('pUsername').value = d.user.username || '';
+            document.getElementById('pUserEmail').value = d.user.email || '';
+            document.getElementById('pUserFullname').value = d.user.nom_complet || '';
+            document.getElementById('pUserRole').value = d.user.role || '';
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+// ==================== ENTREPRISE ====================
+async function saveGeneral() {
+    const payload = {
+        nom_entreprise: document.getElementById('pNomEntreprise').value,
+        slogan: document.getElementById('pSlogan').value,
+        adresse: document.getElementById('pAdresse').value,
+        telephone: document.getElementById('pTelephone').value,
+        email: document.getElementById('pEmail').value,
+        devise_principale: document.getElementById('pDevise').value
+    };
+    try {
+        const r = await fetch('/api/settings/generaux', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const d = await r.json();
+        showToast(d.message, d.success ? 'success' : 'danger');
+    } catch (e) { console.error(e); }
+}
+
+// ==================== SÉCURITÉ ====================
+function checkStrength(pwd) {
+    const bar = document.getElementById('pwdStrengthBar');
+    const label = document.getElementById('pwdStrengthLabel');
+    let score = 0;
+    if (pwd.length >= 6) score++;
+    if (pwd.length >= 10) score++;
+    if (/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
+    if (/\d/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+    const colors = ['#ef4444', '#f59e0b', '#f59e0b', '#10b981', '#059669'];
+    const labels = ['Très faible', 'Faible', 'Moyen', 'Bon', 'Excellent'];
+    const idx = Math.min(score, 4);
+    bar.style.width = ((score + 1) / 5 * 100) + '%';
+    bar.style.background = colors[idx];
+    label.textContent = pwd ? 'Force : ' + labels[idx] : '';
+    label.style.color = colors[idx];
+}
+
+async function changePassword() {
+    const payload = {
+        mot_de_passe_actuel: document.getElementById('pCurrentPwd').value,
+        nouveau_mot_de_passe: document.getElementById('pNewPwd').value,
+        confirmation: document.getElementById('pConfirmPwd').value
+    };
+    if (!payload.nouveau_mot_de_passe) { showToast('Veuillez saisir un nouveau mot de passe', 'warning'); return; }
+    if (payload.nouveau_mot_de_passe !== payload.confirmation) { showToast('Les mots de passe ne correspondent pas', 'warning'); return; }
+    try {
+        const r = await fetch('/api/settings/change-password', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const d = await r.json();
+        showToast(d.message, d.success ? 'success' : 'danger');
+        if (d.success) {
+            document.getElementById('pCurrentPwd').value = '';
+            document.getElementById('pNewPwd').value = '';
+            document.getElementById('pConfirmPwd').value = '';
+            document.getElementById('pwdStrengthBar').style.width = '0';
+            document.getElementById('pwdStrengthLabel').textContent = '';
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function loadLoginHistory() {
+    try {
+        const r = await fetch('/api/rapports/connexions?periode=month');
+        const d = await r.json();
+        const list = document.getElementById('loginHistoryList');
+        if (!d.success || !d.logs || !d.logs.length) {
+            list.innerHTML = 'Aucune connexion enregistrée.';
+            return;
+        }
+        list.innerHTML = d.logs.slice(0, 8).map(c => {
+            const ok = c.success;
+            return `<div class="toggle-row" style="padding: 10px 14px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <i class="bi ${ok ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger'}" style="font-size:1.1rem;"></i>
+                    <div><b style="font-size:0.88rem;">${ok ? 'Connexion réussie' : 'Échec de connexion'}</b>
+                    <span style="display:block; font-size:0.78rem;">${escapeHtml(c.username || '-')} · ${escapeHtml(c.ip_address || '')}</span></div>
+                </div>
+                <span style="font-size:0.78rem; color:var(--gray-500); white-space:nowrap;">${formatDateTime(c.created_at)}</span>
+            </div>`;
+        }).join('');
+    } catch (e) { list.innerHTML = 'Erreur de chargement.'; }
+}
+
+// ==================== NOTIFICATIONS ====================
+async function saveNotifications() {
+    const payload = {
+        notif_email: document.getElementById('pNotifEmail').checked,
+        notif_stock_faible: document.getElementById('pNotifStock').checked,
+        notif_nouvelles_ventes: document.getElementById('pNotifVentes').checked,
+        notif_son: document.getElementById('pNotifSon').checked,
+        alert_sound_type: document.getElementById('pSoundType').value,
+        alert_sound_frequency: document.getElementById('pSoundFreq').value
+    };
+    try {
+        const r = await fetch('/api/settings/notifications', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const d = await r.json();
+        showToast(d.message, d.success ? 'success' : 'danger');
+    } catch (e) { console.error(e); }
+}
+
+function testSound() {
+    const frequency = parseInt(document.getElementById('pSoundFreq').value);
+    const soundType = document.getElementById('pSoundType').value;
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.frequency.value = frequency;
+        oscillator.type = soundType;
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.5);
+    } catch (error) {
+        showToast('Impossible de lire le son', 'danger');
+    }
+}
+
+// ==================== RAPPORTS EMAIL ====================
+async function loadRapportEmail() {
+    try {
+        const r = await fetch('/api/settings/rapports-email');
+        const d = await r.json();
+        if (!d.success) return;
+        const c = d.config;
+        document.getElementById('reEmailActif').checked = !!c.active;
+        document.getElementById('reEmails').value = c.destinataires || '';
+        document.getElementById('reHeure').value = c.heure || '07:00';
+        document.getElementById('reSmtpServeur').value = c.smtp_serveur || '';
+        document.getElementById('reSmtpPort').value = c.smtp_port || 587;
+        document.getElementById('reSmtpSecurite').value = c.smtp_securite || 'starttls';
+        document.getElementById('reSmtpUser').value = c.smtp_utilisateur || '';
+        document.getElementById('reSmtpNom').value = c.smtp_expediteur_nom || '';
+        const joursSel = new Set((c.jours || '').split(',').filter(Boolean));
+        document.querySelectorAll('#reJours input').forEach(i => { i.checked = joursSel.has(i.value); });
+        document.getElementById('reSmtpMdp').placeholder = c.smtp_configure
+            ? '•••••••• (configuré — laisser vide pour le garder)'
+            : '••••••••';
+        const hint = document.getElementById('reDestHint');
+        if (c.destinataires_effectifs && c.destinataires_effectifs.length) {
+            const source = c.destinataires_source;
+            let note = '';
+            if (source === 'smtp_utilisateur') note = ' <span style="color:#d97706;">(repris automatiquement de l\'adresse d\'envoi — saisissez un email ci-dessus pour la personnaliser)</span>';
+            else if (source === 'entreprise') note = ' <span style="color:#d97706;">(repris automatiquement de l\'email de l\'entreprise — saisissez un email ci-dessus pour la personnaliser)</span>';
+            hint.innerHTML = '<i class="bi bi-envelope-check"></i> Les rapports seront envoyés à : <b>' + escapeHtml(c.destinataires_effectifs.join(', ')) + '</b>' + note;
+        } else {
+            hint.innerHTML = '<i class="bi bi-info-circle"></i> Si vide, les rapports iront à l\'adresse d\'envoi SMTP (ou à l\'email de l\'entreprise).';
+        }
+        renderReRecap(c);
+        renderReEtat(d.etat);
+        loadReJournal();
+    } catch (e) { console.error(e); }
+}
+
+const RE_JOURS_NOMS = { '1': 'Lundi', '2': 'Mardi', '3': 'Mercredi', '4': 'Jeudi', '5': 'Vendredi', '6': 'Samedi', '7': 'Dimanche' };
+const RE_SECURITE_NOMS = { 'starttls': 'STARTTLS (587)', 'ssl': 'SSL (465)', 'none': 'Aucune' };
+
+function renderReRecap(c) {
+    const body = document.getElementById('reRecapBody');
+    const rows = [];
+    const mdp = c.smtp_configure
+        ? '<span style="color:#059669;"><i class="bi bi-check-circle"></i> Configuré</span>'
+        : '<span style="color:#d97706;"><i class="bi bi-exclamation-triangle"></i> Non configuré</span>';
+    const jours = (c.jours || '').split(',').filter(Boolean);
+    const joursTxt = jours.length
+        ? jours.map(j => RE_JOURS_NOMS[j] || j).join(', ')
+        : 'Tous les jours';
+    const dests = (c.destinataires || '').split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+    const destTxt = dests.length
+        ? dests.map(d => `<div><i class="bi bi-person-check" style="color:var(--gray-400);"></i> ${escapeHtml(d)}</div>`).join('')
+        : '<span class="empty-hint"><i class="bi bi-info-circle"></i> Non renseignés — l\'adresse d\'envoi sera utilisée</span>';
+    const smtp = `${escapeHtml(c.smtp_serveur || '—')} : ${c.smtp_port || '—'} <span class="empty-hint">(${RE_SECURITE_NOMS[c.smtp_securite] || c.smtp_securite || '—'})</span>`;
+    const expediteur = c.smtp_utilisateur
+        ? `${escapeHtml(c.smtp_utilisateur)} ${c.smtp_expediteur_nom ? `<span class="empty-hint">(${escapeHtml(c.smtp_expediteur_nom)})</span>` : ''}`
+        : '<span style="color:#d97706;"><i class="bi bi-exclamation-triangle"></i> Non renseignée</span>';
+
+    const defs = [
+        { cle: 'État des rapports', val: c.active
+            ? '<span class="badge bg-success">Activés</span>'
+            : '<span class="badge bg-secondary">Désactivés</span>', champ: 'reEmailActif' },
+        { cle: 'Adresse d\'envoi (SMTP)', val: expediteur, champ: 'reSmtpUser' },
+        { cle: 'Nom affiché de l\'expéditeur', val: escapeHtml(c.smtp_expediteur_nom || '—'), champ: 'reSmtpNom' },
+        { cle: 'Serveur SMTP', val: smtp, champ: 'reSmtpServeur' },
+        { cle: 'Mot de passe d\'application', val: mdp, champ: 'reSmtpMdp' },
+        { cle: 'Destinataires des rapports', val: destTxt, champ: 'reEmails' },
+        { cle: 'Heure d\'envoi', val: escapeHtml(c.heure || '—'), champ: 'reHeure' },
+        { cle: 'Jours d\'envoi', val: escapeHtml(joursTxt), champ: 'reJours' }
+    ];
+    body.innerHTML = defs.map(r => `
+        <tr>
+            <td class="recap-label">${r.cle}</td>
+            <td>${r.val}</td>
+            <td style="text-align:right;">
+                <button class="btn btn-outline-primary btn-sm" onclick="reEditerChamp('${r.champ}')"><i class="bi bi-pencil"></i> Modifier</button>
+            </td>
+        </tr>`).join('');
+}
+
+function reEditerChamp(champId) {
+    const el = document.getElementById(champId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('recap-flash');
+    setTimeout(() => el.classList.remove('recap-flash'), 2200);
+    if (el.focus) el.focus({ preventScroll: true });
+    showToast('Modifiez la valeur, puis cliquez sur « Enregistrer la configuration »', 'info');
+}
+
+function renderReEtat(etat) {    if (!etat) return;
+    document.getElementById('reNbAttente').textContent = etat.en_attente;
+    document.getElementById('reNbEnvoyes').textContent = etat.envoyes;
+    document.getElementById('reNbErreurs').textContent = etat.erreurs;
+    document.getElementById('reDernierEnvoi').textContent = etat.dernier_envoi ? formatDateTime(etat.dernier_envoi) : 'Jamais';
+    const eb = document.getElementById('reErreurBox');
+    if (etat.derniere_erreur) {
+        eb.style.display = 'block';
+        eb.innerHTML = '<i class="bi bi-exclamation-triangle"></i> <b>Dernière erreur :</b> ' + escapeHtml(etat.derniere_erreur);
+    } else {
+        eb.style.display = 'none';
+    }
+}
+
+async function loadReJournal() {
+    try {
+        const r = await fetch('/api/settings/rapports-email/journal?limite=15');
+        const d = await r.json();
+        const box = document.getElementById('reJournal');
+        if (!d.success || !d.emails || !d.emails.length) {
+            box.innerHTML = '<p class="empty-hint">Aucun rapport programmé pour le moment. Enregistrez la configuration ci-dessus pour commencer.</p>';
+            return;
+        }
+        box.innerHTML = '<div style="font-weight:800;font-size:0.9rem;margin-bottom:8px;">Derniers rapports programmés</div>' + d.emails.map(e => {
+            const badge = e.statut === 'envoye'
+                ? '<span class="badge bg-success">Envoyé</span>'
+                : e.statut === 'erreur'
+                    ? '<span class="badge bg-danger">Erreur</span>'
+                    : '<span class="badge bg-warning text-dark">En attente</span>';
+            const erreur = e.erreur ? `<span style="display:block;font-size:0.75rem;color:#991b1b;">${escapeHtml(e.erreur)}</span>` : '';
+            return `<div class="toggle-row" style="padding:10px 14px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    ${badge}
+                    <div>
+                        <b style="font-size:0.88rem;">${escapeHtml(e.destinataire)}</b>
+                        <span style="display:block;font-size:0.78rem;">Prévu : ${formatDateTime(e.date_prevue)} · Période : ${e.date_debut ? e.date_debut.slice(0,10) : '-'} → ${e.date_fin ? e.date_fin.slice(0,10) : '-'}</span>
+                        ${erreur}
+                    </div>
+                </div>
+                ${e.date_envoi ? `<span style="font-size:0.75rem;color:var(--gray-500);white-space:nowrap;">${formatDateTime(e.date_envoi)}</span>` : ''}
+            </div>`;
+        }).join('');
+    } catch (e) { console.error(e); }
+}
+
+function reAjouterDestinataire() {
+    const input = document.getElementById('reAjoutEmail');
+    const email = (input.value || '').trim();
+    if (!email) return;
+    const ta = document.getElementById('reEmails');
+    const existants = ta.value.split(/[\n,]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
+    if (existants.includes(email.toLowerCase())) {
+        showToast('Cet email est déjà dans la liste des destinataires.', 'warning');
+        return;
+    }
+    ta.value = ta.value.trim() ? ta.value.trim() + ',\n' + email : email;
+    input.value = '';
+    showToast('Destinataire ajouté : ' + email + '. Cliquez sur « Enregistrer la configuration » pour appliquer.', 'success');
+}
+
+function reChangerActivation() {    const actif = document.getElementById('reEmailActif').checked;
+    showToast(actif ? 'Rapports automatiques activés — cliquez sur « Enregistrer la configuration » pour appliquer.'
+                    : 'Rapports automatiques désactivés — cliquez sur « Enregistrer la configuration » pour appliquer.', 'info');
+}
+
+function reCollectionPayload() {
+    const jours = Array.from(document.querySelectorAll('#reJours input:checked')).map(i => i.value).join(',');
+    return {
+        active: document.getElementById('reEmailActif').checked,
+        rapport_email_destinataires: document.getElementById('reEmails').value,
+        rapport_email_heure: document.getElementById('reHeure').value || '07:00',
+        rapport_email_jours: jours,
+        smtp_serveur: document.getElementById('reSmtpServeur').value.trim(),
+        smtp_port: parseInt(document.getElementById('reSmtpPort').value) || 587,
+        smtp_utilisateur: document.getElementById('reSmtpUser').value.trim(),
+        smtp_securite: document.getElementById('reSmtpSecurite').value,
+        smtp_expediteur_nom: document.getElementById('reSmtpNom').value.trim()
+    };
+}
+
+async function reEnregistrer() {
+    const payload = reCollectionPayload();
+    const mdp = document.getElementById('reSmtpMdp').value;
+    if (mdp) payload.smtp_mot_de_passe = mdp;
+    try {
+        const r = await fetch('/api/settings/rapports-email', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const d = await r.json();
+        showToast(d.message, d.success ? 'success' : 'danger');
+        if (d.success) {
+            document.getElementById('reSmtpMdp').value = '';
+            loadRapportEmail();
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function reEnvoyerTest() {
+    const payload = reCollectionPayload();
+    const mdp = document.getElementById('reSmtpMdp').value;
+    if (mdp) payload.smtp_mot_de_passe = mdp;
+    const btn = event && event.currentTarget ? event.currentTarget : null;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Envoi du test...'; }
+    try {
+        // 1) Enregistrer d'abord la configuration (pour garder le mot de passe)
+        const save = await fetch('/api/settings/rapports-email', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const sd = await save.json();
+        if (sd.success) document.getElementById('reSmtpMdp').value = '';
+        // 2) Envoyer le test
+        const r = await fetch('/api/settings/rapports-email/test', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const d = await r.json();
+        showToast(d.message, d.success ? 'success' : 'danger');
+        loadRapportEmail();
+    } catch (e) { console.error(e); }
+    finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-send"></i> Envoyer un email de test'; }
+    }
+}
+
+async function reEnvoyerMaintenant() {
+    const btn = document.querySelector('[onclick="reEnvoyerMaintenant()"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Envoi en cours...</i>'; }
+    try {
+        const r = await fetch('/api/settings/rapports-email/envoyer-maintenant', { method: 'POST' });
+        const d = await r.json();
+        showToast(d.message, d.success ? 'success' : 'danger');
+        loadRapportEmail();
+    } catch (e) { console.error(e); }
+    finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-send-fill"></i> Envoyer maintenant tout ce qui est en attente'; }
+    }
+}
+
+// ==================== TAUX DE CHANGE ====================
+async function loadTauxChange() {
+    try {
+        const r = await fetch('/api/taux-change');
+        const d = await r.json();
+        const list = document.getElementById('tauxChangeList');
+        if (!d.success || !d.taux_change.length) {
+            list.innerHTML = '<p class="empty-hint">Aucun taux de change configuré. Ajoutez le taux USD → FC (ex : 2800).</p>';
+            return;
+        }
+        list.innerHTML = d.taux_change.map(t => `
+            <div class="rate-card">
+                <div class="rate-pair">
+                    <span class="devise-badge ${t.devise_source === 'USD' ? 'usd' : 'cdf'}">${escapeHtml(t.devise_source)}</span>
+                    <i class="bi bi-arrow-right" style="color:var(--gray-500);"></i>
+                    <span class="devise-badge ${t.devise_cible === 'USD' ? 'usd' : 'cdf'}">${escapeHtml(t.devise_cible)}</span>
+                    <div style="margin-left:10px;">
+                        <b style="font-size:1rem;">1 ${escapeHtml(t.devise_source)} = ${t.taux} ${escapeHtml(t.devise_cible)}</b>
+                        <div style="font-size:0.75rem; color:var(--gray-500);">En vigueur le ${formatDate(t.effective_date)}</div>
+                    </div>
+                </div>
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteTauxChange(${t.id})" title="Supprimer">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>`).join('');
+    } catch (e) { console.error(e); }
+}
+
+async function addTauxChange() {
+    const deviseSource = document.getElementById('deviseSource').value;
+    const deviseCible = document.getElementById('deviseCible').value;
+    const tauxValue = document.getElementById('tauxValue').value;
+    if (!tauxValue || parseFloat(tauxValue) <= 0) { showToast('Veuillez saisir un taux valide', 'warning'); return; }
+    if (deviseSource === deviseCible) { showToast('Les devises doivent être différentes', 'warning'); return; }
+    try {
+        const r = await fetch('/api/taux-change', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ devise_source: deviseSource, devise_cible: deviseCible, taux: parseFloat(tauxValue) })
+        });
+        const d = await r.json();
+        showToast(d.message, d.success ? 'success' : 'danger');
+        if (d.success) { document.getElementById('tauxValue').value = ''; loadTauxChange(); }
+    } catch (e) { console.error(e); }
+}
+
+async function deleteTauxChange(id) {
+    if (!confirm('Supprimer ce taux de change ?')) return;
+    try {
+        const r = await fetch('/api/taux-change/' + id, { method: 'DELETE' });
+        const d = await r.json();
+        showToast(d.message, d.success ? 'success' : 'danger');
+        if (d.success) loadTauxChange();
+    } catch (e) { console.error(e); }
+}
+
+// ==================== APPARENCE ====================
+function setupColorSwatches() {
+    const container = document.getElementById('colorSwatches');
+    container.innerHTML = COLORS.map(c => `<div class="color-swatch" data-color="${c}" style="background:${c};" title="${c}" onclick="selectColor('${c}', this)"></div>`).join('');
+}
+
+function applyColor(color) {
+    document.documentElement.style.setProperty('--primary', color);
+    document.documentElement.style.setProperty('--dark-blue', color);
+    document.querySelectorAll('.color-swatch').forEach(sw => {
+        sw.classList.toggle('active', sw.dataset.color.toLowerCase() === color.toLowerCase());
+    });
+}
+
+function selectColor(color, el) {
+    applyColor(color);
+    document.querySelectorAll('.color-swatch').forEach(sw => sw.classList.remove('active'));
+    el.classList.add('active');
+}
+
+async function saveAppearance() {
+    const payload = {
+        theme: document.getElementById('pTheme').value,
+        couleur_principale: document.querySelector('.color-swatch.active')?.dataset.color || '#1e3a8a'
+    };
+    try {
+        const r = await fetch('/api/settings/apparence', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const d = await r.json();
+        showToast(d.message, d.success ? 'success' : 'danger');
+    } catch (e) { console.error(e); }
+}
+
+// ==================== DONNÉES ====================
+async function loadStatMini() {
+    try {
+        const r = await fetch('/api/statistiques/globales');
+        const d = await r.json();
+        if (!d.success) return;
+        document.getElementById('statProduits').textContent = d.stock.total_produits;
+        document.getElementById('statVentes').textContent = d.ventes.total_ventes;
+    } catch (e) {}
+    try {
+        const r2 = await fetch('/api/compta/resume');
+        const d2 = await r2.json();
+        if (d2.success) document.getElementById('statEcritures').textContent = d2.total_ecritures;
+    } catch (e) {}
+    try {
+        const r3 = await fetch('/api/caisse/mouvements');
+        const d3 = await r3.json();
+        if (d3.success && d3.mouvements) document.getElementById('statCaisse').textContent = d3.mouvements.length;
+    } catch (e) {}
+}
+
+async function exportJSON() {
+    try {
+        const r = await fetch('/api/settings/export');
+        if (!r.ok) throw new Error('Export impossible');
+        const blob = await r.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (r.headers.get('Content-Disposition') || '').match(/filename=([^;]+)/)?.[1] || 'motostock_backup.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        showToast('Sauvegarde téléchargée avec succès', 'success');
+    } catch (e) {
+        showToast('Erreur lors de l\'export', 'danger');
+    }
+}
+
+async function exportCSV() {
+    const rows = [['Reference', 'Nom', 'Categorie', 'Fournisseur', 'Prix Achat', 'Prix Vente', 'Devise', 'Quantite', 'Stock Min']];
+    try {
+        const r = await fetch('/api/produits');
+        const d = await r.json();
+        (d.produits || []).forEach(p => rows.push([
+            p.reference, p.nom, p.categorie, p.fournisseur || '', p.prix_achat, p.prix_vente, p.devise, p.quantite, p.stock_min
+        ]));
+        downloadCSV('produits.csv', rows);
+    } catch (e) { showToast('Erreur lors de l\'export CSV', 'danger'); }
+}
+
+async function exportVentesCSV() {
+    const rows = [['ID', 'Date', 'Client', 'Montant', 'Devise', 'Mode', 'Statut']];
+    try {
+        const r = await fetch('/api/rapports/ventes?periode=all');
+        const d = await r.json();
+        (d.ventes || []).forEach(v => rows.push([
+            v.id, v.date, v.client || '', v.montant, v.devise_norm || v.devise, v.mode_paiement, v.statut
+        ]));
+        downloadCSV('ventes.csv', rows);
+    } catch (e) { showToast('Erreur lors de l\'export CSV', 'danger'); }
+}
+
+function downloadCSV(filename, rows) {
+    const csv = rows.map(r => r.map(c => '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"').join(';')).join('\r\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(filename + ' téléchargé', 'success');
+}
+
+async function resetAllData() {
+    const confirmText = document.getElementById('resetConfirmInput').value;
+    if (confirmText !== 'SUPPRIMER') {
+        showToast('Tapez exactement SUPPRIMER pour confirmer', 'warning');
+        return;
+    }
+    try {
+        const r = await fetch('/api/settings/reset-data', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ confirmation: confirmText })
+        });
+        const d = await r.json();
+        showToast(d.message, d.success ? 'success' : 'danger');
+        if (d.success) {
+            document.getElementById('resetConfirmInput').value = '';
+            loadStatMini();
+            loadTauxChange();
+        }
+    } catch (e) { console.error(e); }
+}
+
+// ==================== HELPERS ====================
+function formatDate(d) {
+    if (!d) return '-';
+    return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+function formatDateTime(d) {
+    if (!d) return '-';
+    return new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+</script>
+{% endblock %}

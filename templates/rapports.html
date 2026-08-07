@@ -1,0 +1,1759 @@
+{% extends "base.html" %}
+
+{% block title %}Rapports | MotoStockIA - #TUMIKA{% endblock %}
+{% block page_title %}Rapports{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-hero {
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1e40af 100%);
+        border-radius: 16px;
+        padding: 28px 32px;
+        color: white;
+        box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.3);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+    .dashboard-hero::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0) 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .stats-card-refined {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 22px;
+        border: 1px solid var(--gray-200);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        transition: all 0.25s ease;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+    }
+    .stats-card-refined:hover { transform: translateY(-3px); box-shadow: 0 12px 25px -5px rgba(0,0,0,0.08); }
+    .icon-badge {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
+        flex-shrink: 0;
+    }
+    .icon-badge.primary { background: rgba(30, 58, 138, 0.1); color: #1e3a8a; }
+    .icon-badge.success { background: rgba(16, 185, 129, 0.12); color: #059669; }
+    .icon-badge.indigo { background: rgba(99, 102, 241, 0.12); color: #4f46e5; }
+    .icon-badge.warning { background: rgba(245, 158, 11, 0.12); color: #d97706; }
+    .icon-badge.danger { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+    .icon-badge.info { background: rgba(6, 182, 212, 0.12); color: #0891b2; }
+
+    .report-tabs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+    .report-tab {
+        border: 1px solid var(--gray-300);
+        background: white;
+        color: var(--gray-700);
+        border-radius: 12px;
+        padding: 12px 22px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .report-tab:hover { border-color: var(--primary); color: var(--primary); background: #f5f7ff; }
+    .report-tab.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 6px 15px -5px rgba(30, 58, 138, 0.4); }
+
+    .report-section { display: none; }
+    .report-section.active { display: block; }
+
+    .report-card {
+        background: #ffffff;
+        border-radius: 16px;
+        border: 1px solid var(--gray-200);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        padding: 24px;
+        margin-bottom: 24px;
+    }
+    .report-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    .report-card-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--gray-900);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .report-subtitle {
+        font-size: 0.85rem;
+        color: var(--gray-500);
+        margin: 4px 0 0 0;
+        line-height: 1.5;
+    }
+
+    .period-select {
+        border-radius: 10px;
+        font-weight: 600;
+        border: 1px solid var(--gray-300);
+        padding: 8px 14px;
+    }
+
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        display: inline-block;
+    }
+    .status-completed { background: #d1fae5; color: #065f46; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-cancelled { background: #fee2e2; color: #991b1b; }
+    .status-danger { background: #fee2e2; color: #991b1b; }
+    .status-disponible { background: #d1fae5; color: #065f46; }
+    .status-faible { background: #fef3c7; color: #92400e; }
+    .status-epuise { background: #fee2e2; color: #991b1b; }
+
+    .table-report { width: 100%; border-collapse: collapse; }
+    .table-report th, .table-report td {
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 1px solid var(--gray-200);
+        font-size: 0.9rem;
+    }
+    .table-report th {
+        background: var(--gray-100);
+        font-weight: 700;
+        color: var(--gray-700);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+    }
+    .table-report tbody tr:hover { background: var(--gray-100); }
+
+    .currency-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 0.78rem;
+        font-weight: 600;
+    }
+    .currency-pill.cdf { background: #e0e7ff; color: #3730a3; }
+    .currency-pill.usd { background: #d1fae5; color: #065f46; }
+
+    .rank-badge {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.85rem;
+    }
+    .rank-1 { background: linear-gradient(135deg, #f59e0b, #fbbf24); color: #78350f; }
+    .rank-2 { background: linear-gradient(135deg, #94a3b8, #cbd5e1); color: #1e293b; }
+    .rank-3 { background: linear-gradient(135deg, #b45309, #d97706); color: #fff7ed; }
+    .rank-other { background: var(--gray-200); color: var(--gray-600); }
+
+    .chart-box { height: 320px; position: relative; }
+    .chart-box-sm { height: 280px; position: relative; }
+
+    .explain-box {
+        background: #f0f7ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 0.82rem;
+        color: #1e3a8a;
+        margin-bottom: 14px;
+        line-height: 1.55;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    .explain-box i { margin-top: 2px; }
+    .explain-box.warning { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+    .explain-box.danger { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .explain-box.success { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+
+    .mini-stat {
+        background: var(--gray-100);
+        border-radius: 10px;
+        padding: 10px 14px;
+        text-align: center;
+    }
+    .mini-stat .val { font-size: 1.15rem; font-weight: 800; color: var(--gray-900); }
+    .mini-stat .lbl { font-size: 0.72rem; font-weight: 600; color: var(--gray-500); text-transform: uppercase; }
+
+    .progress-slim { height: 8px; border-radius: 6px; background: var(--gray-200); overflow: hidden; }
+    .progress-slim > div { height: 100%; border-radius: 6px; }
+
+    .alert-strip {
+        border-radius: 12px;
+        padding: 14px 18px;
+        margin-bottom: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    .alert-strip.danger { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+    .alert-strip.success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; }
+    .alert-strip.info { background: #eef2ff; border: 1px solid #c7d2fe; color: #3730a3; }
+</style>
+
+<!-- Hero -->
+<div class="dashboard-hero">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; position: relative; z-index: 1;">
+        <div>
+            <h2 style="margin: 0 0 6px 0; font-weight: 800; font-size: 1.75rem; letter-spacing: -0.5px;">📊 Rapports d'activité</h2>
+            <p style="margin: 0; opacity: 0.88; font-size: 0.98rem;">Votre capital, vos ventes, vos bénéfices, vos réapprovisionnements et vos clients — expliqués simplement, pour piloter votre affaire.</p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <select id="reportPeriodSelect" class="form-select form-select-sm period-select" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);" onchange="reloadActiveReport()">
+                <option value="today" style="color: #0f172a;">Aujourd'hui</option>
+                <option value="week" style="color: #0f172a;">Cette semaine</option>
+                <option value="2weeks" style="color: #0f172a;">Les 2 dernières semaines</option>
+                <option value="month" selected style="color: #0f172a;">Ce mois</option>
+                <option value="semester" style="color: #0f172a;">Ce semestre (6 mois)</option>
+                <option value="year" style="color: #0f172a;">Cette année</option>
+                <option value="all" style="color: #0f172a;">Toute la période</option>
+            </select>
+            <button class="btn btn-light btn-sm" onclick="window.print()" style="border-radius: 10px; font-weight: 600; padding: 8px 14px;">
+                <i class="bi bi-printer"></i> Imprimer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Onglets de rapport -->
+<div class="report-tabs">
+    <button class="report-tab active" data-tab="capital" onclick="switchReportTab('capital')">
+        <i class="bi bi-piggy-bank"></i> Capital & Actifs
+    </button>
+    <button class="report-tab" data-tab="synthese" onclick="switchReportTab('synthese')">
+        <i class="bi bi-speedometer2"></i> Synthèse
+    </button>
+    <button class="report-tab" data-tab="produits" onclick="switchReportTab('produits')">
+        <i class="bi bi-box-seam"></i> Produits & Stock
+    </button>
+    <button class="report-tab" data-tab="reappro" onclick="switchReportTab('reappro')">
+        <i class="bi bi-arrow-repeat"></i> Réapprovisionnements
+    </button>
+    <button class="report-tab" data-tab="activites" onclick="switchReportTab('activites')">
+        <i class="bi bi-clock-history"></i> Historique des activités
+    </button>
+    <button class="report-tab" data-tab="clients" onclick="switchReportTab('clients')">
+        <i class="bi bi-people"></i> Clients
+    </button>
+    <button class="report-tab" data-tab="dettes" onclick="switchReportTab('dettes')">
+        <i class="bi bi-credit-card"></i> Dettes & Crédits
+    </button>
+</div>
+
+<!-- Bandeau période -->
+<div id="periodBanner" style="display:none; background:#eef2ff; border:1px solid #c7d2fe; color:#3730a3; border-radius:12px; padding:12px 18px; margin-bottom:20px; font-size:0.9rem; font-weight:600;">
+    <i class="bi bi-calendar-range"></i> <span id="periodBannerText"></span>
+</div>
+
+<!-- ==================== SECTION CAPITAL ==================== -->
+<div id="capitalSection" class="report-section active">
+    <div class="explain-box success">
+        <i class="bi bi-lightbulb"></i>
+        <div><strong>Votre capital, c'est tout ce que possède votre affaire :</strong> la valeur des marchandises en rayon (le stock), l'argent que vos ventes ont déjà rapporté depuis le début, et l'argent que vos clients vous doivent encore (les créances). C'est ce qui constitue la force de votre entreprise.</div>
+    </div>
+
+    <div id="capitalKpis" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 24px;"></div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div class="report-card">
+            <div class="report-card-header">
+                <div>
+                    <h3 class="report-card-title"><i class="bi bi-box-seam text-warning"></i> Valeur de votre stock</h3>
+                    <p class="report-subtitle">Ce que valent les produits actuellement en rayon, calculé au prix d'achat et au prix de vente.</p>
+                </div>
+            </div>
+            <div id="stockValueBox" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;"></div>
+        </div>
+        <div class="report-card">
+            <div class="report-card-header">
+                <div>
+                    <h3 class="report-card-title"><i class="bi bi-cash-stack text-success"></i> Argent de l'affaire</h3>
+                    <p class="report-subtitle">Ventes cumulées (tout l'argent gagné), bénéfice cumulé, créances et caisse.</p>
+                </div>
+            </div>
+            <div id="moneyBox" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;"></div>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-calendar2-range text-primary"></i> Chiffre d'affaires & bénéfice par année</h3>
+                <p class="report-subtitle">Vos résultats année par année : combien vous avez vendu, combien vous avez gagné, et votre marge.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Année</th>
+                        <th>Ventes</th>
+                        <th>Chiffre d'affaires (FC)</th>
+                        <th>Chiffre d'affaires ($)</th>
+                        <th>Bénéfice (FC)</th>
+                        <th>Bénéfice ($)</th>
+                        <th>Marge</th>
+                    </tr>
+                </thead>
+                <tbody id="capitalAnneesBody">
+                    <tr><td colspan="7" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SECTION SYNTHÈSE ==================== -->
+<div id="syntheseSection" class="report-section">
+    <div class="explain-box">
+        <i class="bi bi-lightbulb"></i>
+        <div><strong>Ce que vous voyez ici :</strong> tout ce que votre affaire a produit pendant la période choisie. Le chiffre d'affaires = l'argent encaissé. Le bénéfice = ce qu'il vous reste après avoir retiré le prix d'achat des produits vendus.</div>
+    </div>
+
+    <!-- KPI -->
+    <div id="syntheseKpis" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 24px;"></div>
+
+    <!-- Bénéfices selon la période -->
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-graph-up-arrow text-success"></i> Vos bénéfices par période</h3>
+                <p class="report-subtitle">Un même coup d'œil sur vos résultats par jour, semaine, mois, trimestre, semestre et année — sans changer de filtre.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Période</th>
+                        <th>Ventes</th>
+                        <th>Chiffre d'affaires (FC)</th>
+                        <th>Bénéfice (FC)</th>
+                        <th>Bénéfice ($)</th>
+                        <th>Marge</th>
+                    </tr>
+                </thead>
+                <tbody id="benefPeriodesBody">
+                    <tr><td colspan="6" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Graphique évolution -->
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-graph-up-arrow text-primary"></i> Évolution des ventes</h3>
+                <p class="report-subtitle">Montant vendu chaque jour (ou chaque mois si la période est longue).</p>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-outline-primary btn-sm" id="evolUsdBtn" onclick="setEvolutionCurrency('USD')" style="border-radius:8px;font-weight:700;font-size:0.78rem;">$ USD</button>
+                <button class="btn btn-primary btn-sm" id="evolCdfBtn" onclick="setEvolutionCurrency('CDF')" style="border-radius:8px;font-weight:700;font-size:0.78rem;">FC</button>
+            </div>
+        </div>
+        <div class="chart-box">
+            <canvas id="evolutionChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Graphiques : modes + top produits -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div class="report-card">
+            <div class="report-card-header">
+                <div>
+                    <h3 class="report-card-title"><i class="bi bi-cash-coin text-warning"></i> Modes de paiement</h3>
+                    <p class="report-subtitle">Comment vos clients paient (comptant, crédit, mobile…).</p>
+                </div>
+            </div>
+            <div class="chart-box-sm" style="display:flex;align-items:center;justify-content:center;">
+                <canvas id="modeChart"></canvas>
+            </div>
+        </div>
+        <div class="report-card">
+            <div class="report-card-header">
+                <div>
+                    <h3 class="report-card-title"><i class="bi bi-trophy text-indigo" style="color:#4f46e5;"></i> Top 5 produits vendus</h3>
+                    <p class="report-subtitle">Les produits qui partent le plus souvent.</p>
+                </div>
+            </div>
+            <div class="chart-box-sm">
+                <canvas id="topProductsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SECTION PRODUITS & STOCK ==================== -->
+<div id="produitsSection" class="report-section">
+    <div class="explain-box">
+        <i class="bi bi-lightbulb"></i>
+        <div><strong>Produits & Stock :</strong> vos meilleures ventes sur la période et par année/trimestre, les produits les moins demandés, la rotation des stocks, et le détail article → client → montant → reste en stock.</div>
+    </div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-trophy text-warning"></i> Top 10 produits les plus vendus</h3>
+                <p class="report-subtitle">Ce sont vos meilleures ventes sur la période : le bénéfice est calculé par produit.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Rang</th>
+                        <th>Produit</th>
+                        <th>Catégorie</th>
+                        <th>Quantité vendue</th>
+                        <th>Nombre de ventes</th>
+                        <th>Revenu (FC)</th>
+                        <th>Bénéfice (FC)</th>
+                        <th>Bénéfice ($)</th>
+                    </tr>
+                </thead>
+                <tbody id="topProduitsBody">
+                    <tr><td colspan="8" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div class="report-card">
+            <div class="report-card-header">
+                <div>
+                    <h3 class="report-card-title"><i class="bi bi-calendar2-week text-primary"></i> Top produits par année</h3>
+                    <p class="report-subtitle">Les 3 articles les plus vendus de chaque année — pour voir ce qui marche sur la durée.</p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table-report">
+                    <thead>
+                        <tr>
+                            <th>Année</th>
+                            <th>Produits les plus vendus</th>
+                            <th>Qté</th>
+                            <th>Revenu ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topParAnneeBody">
+                        <tr><td colspan="4" style="text-align: center; color: var(--gray-500); padding: 30px;">Chargement...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="report-card">
+            <div class="report-card-header">
+                <div>
+                    <h3 class="report-card-title"><i class="bi bi-calendar2-week text-indigo" style="color:#4f46e5;"></i> Top produits par trimestre</h3>
+                    <p class="report-subtitle">Les 3 articles les plus vendus des 4 derniers trimestres — pour suivre les tendances.</p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table-report">
+                    <thead>
+                        <tr>
+                            <th>Trimestre</th>
+                            <th>Produits les plus vendus</th>
+                            <th>Qté</th>
+                            <th>Revenu ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topParTrimestreBody">
+                        <tr><td colspan="4" style="text-align: center; color: var(--gray-500); padding: 30px;">Chargement...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-person-lines-fill text-success"></i> Détail article → client → montant → reste en stock</h3>
+                <p class="report-subtitle">Pour chaque article vendu sur la période : qui l'a acheté, en quelle quantité, pour quel montant, et combien il en reste en rayon.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Article</th>
+                        <th>Catégorie</th>
+                        <th>Total vendu</th>
+                        <th>Reste en stock</th>
+                        <th>Clients (quantité — montant)</th>
+                    </tr>
+                </thead>
+                <tbody id="detailArticlesBody">
+                    <tr><td colspan="5" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-arrow-down-circle text-danger"></i> Produits les moins demandés</h3>
+                <p class="report-subtitle">Les produits qui se vendent peu : pensez-y pour vos prochaines commandes.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Produit</th>
+                        <th>Référence</th>
+                        <th>Catégorie</th>
+                        <th>Quantité vendue</th>
+                        <th>Revenu (FC)</th>
+                    </tr>
+                </thead>
+                <tbody id="produitsPeuBody">
+                    <tr><td colspan="5" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-arrow-repeat text-success"></i> Rotation des stocks</h3>
+                <p class="report-subtitle">« Rotation » = combien de fois le stock d'un produit s'est renouvelé. Exemple : rotation 3 = il s'est vendu 3 fois plus que ce qu'il reste en rayon.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Produit</th>
+                        <th>Catégorie</th>
+                        <th>Vendu (période)</th>
+                        <th>En stock</th>
+                        <th>Rotation</th>
+                        <th>État</th>
+                    </tr>
+                </thead>
+                <tbody id="rotationBody">
+                    <tr><td colspan="6" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SECTION RÉAPPROVISIONNEMENTS ==================== -->
+<div id="reapproSection" class="report-section">
+    <div class="explain-box">
+        <i class="bi bi-lightbulb"></i>
+        <div><strong>Réapprovisionnements :</strong> chaque fois que vous ajoutez des produits en stock, ça compte comme un réapprovisionnement. Ici vous voyez combien de fois et combien d'unités vous avez ajoutées pour chaque article et chaque catégorie.</div>
+    </div>
+
+    <div id="reapproMiniStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;"></div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-box-seam text-primary"></i> Réapprovisionnements par article</h3>
+                <p class="report-subtitle">Chaque article avec le nombre de réapprovisionnements, la quantité totale ajoutée et le stock actuel.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Article</th>
+                        <th>Catégorie</th>
+                        <th>Nombre de fois</th>
+                        <th>Quantité totale ajoutée</th>
+                        <th>Stock actuel</th>
+                        <th>Dernier réappro.</th>
+                    </tr>
+                </thead>
+                <tbody id="reapproArticlesBody">
+                    <tr><td colspan="6" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-tags text-success"></i> Réapprovisionnements par catégorie</h3>
+                <p class="report-subtitle">Quelles catégories de produits vous réapprovisionnez le plus souvent.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Catégorie</th>
+                        <th>Nombre de réappro.</th>
+                        <th>Quantité totale ajoutée</th>
+                    </tr>
+                </thead>
+                <tbody id="reapproCatsBody">
+                    <tr><td colspan="3" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SECTION HISTORIQUE DES ACTIVITÉS ==================== -->
+<div id="activitesSection" class="report-section">
+    <div class="explain-box">
+        <i class="bi bi-lightbulb"></i>
+        <div><strong>Historique des activités :</strong> tout ce qui s'est passé sur votre stock — chaque création de produit, modification, réapprovisionnement, vente, épuisement ou annulation — avec le stock avant et après. En bas, le même journal pour votre caisse.</div>
+    </div>
+
+    <div id="activitesMiniStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;"></div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-box-seam text-primary"></i> Résumé par produit</h3>
+                <p class="report-subtitle">Combien de fois chaque article a été vendu, réapprovisionné ou épuisé, et ce qui reste en stock.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Produit</th>
+                        <th>Catégorie</th>
+                        <th>Vendu</th>
+                        <th>Qté vendue</th>
+                        <th>Réappro.</th>
+                        <th>Modifications</th>
+                        <th>Épuisé</th>
+                        <th>Stock actuel</th>
+                        <th>Statut</th>
+                        <th>Dernière activité</th>
+                    </tr>
+                </thead>
+                <tbody id="resumeActivitesBody">
+                    <tr><td colspan="10" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-list-ul text-primary"></i> Journal détaillé des activités de stock</h3>
+                <p class="report-subtitle">Chaque événement dans le temps : quel produit, quel changement de stock, qui, quand.</p>
+            </div>
+            <select id="activiteProduitFilter" class="form-select form-select-sm period-select" style="max-width: 280px;" onchange="reloadActiveReport()">
+                <option value="">Tous les produits</option>
+            </select>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Activité</th>
+                        <th>Produit</th>
+                        <th>Stock avant</th>
+                        <th>Stock après</th>
+                        <th>Variation</th>
+                        <th>Détail</th>
+                    </tr>
+                </thead>
+                <tbody id="activitesDetailBody">
+                    <tr><td colspan="7" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-cash-stack text-success"></i> Journal de la caisse</h3>
+                <p class="report-subtitle">Chaque entrée et sortie d'argent : vos encaissements, dépenses et le solde après chaque mouvement.</p>
+            </div>
+        </div>
+        <div id="caisseResumeBox" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 18px;"></div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Libellé</th>
+                        <th>Type</th>
+                        <th>Montant</th>
+                        <th>Devise</th>
+                        <th>Solde après</th>
+                    </tr>
+                </thead>
+                <tbody id="caisseMouvementsBody">
+                    <tr><td colspan="6" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SECTION CLIENTS ==================== -->
+<div id="clientsSection" class="report-section">
+    <div class="explain-box">
+        <i class="bi bi-lightbulb"></i>
+        <div><strong>Clients :</strong> qui achète chez vous, qui paie comptant, qui achète à crédit, et qui commence seulement. Le top clients classe vos meilleurs clients par argent dépensé.</div>
+    </div>
+
+    <div id="clientsMiniStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;"></div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-trophy text-indigo" style="color:#4f46e5;"></i> Top 10 clients (par montant dépensé)</h3>
+                <p class="report-subtitle">Vos meilleurs clients sur la période : récompensez-les, ils font vivre l'affaire.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Rang</th>
+                        <th>Client</th>
+                        <th>Téléphone</th>
+                        <th>Nombre de ventes</th>
+                        <th>Dépensé (FC)</th>
+                        <th>Dépensé ($)</th>
+                    </tr>
+                </thead>
+                <tbody id="topClientsBody">
+                    <tr><td colspan="6" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-people text-primary"></i> Tous les clients de la période</h3>
+                <p class="report-subtitle">Chaque client avec ses achats : régulier s'il est venu au moins 2 fois.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Client</th>
+                        <th>Téléphone</th>
+                        <th>Nombre de ventes</th>
+                        <th>Dépensé (FC)</th>
+                        <th>Dépensé ($)</th>
+                        <th>Profil</th>
+                    </tr>
+                </thead>
+                <tbody id="allClientsBody">
+                    <tr><td colspan="6" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div class="report-card">
+            <div class="report-card-header">
+                <div>
+                    <h3 class="report-card-title"><i class="bi bi-cash-coin text-success"></i> Clients qui paient comptant</h3>
+                    <p class="report-subtitle">Ceux qui payent immédiatement : vos clients les plus fiables.</p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table-report">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>Téléphone</th>
+                            <th>Ventes comptant</th>
+                            <th>Montant (FC)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientsPayeursBody">
+                        <tr><td colspan="4" style="text-align: center; color: var(--gray-500); padding: 30px;">Chargement...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="report-card">
+            <div class="report-card-header">
+                <div>
+                    <h3 class="report-card-title"><i class="bi bi-credit-card text-warning"></i> Clients qui achètent à crédit</h3>
+                    <p class="report-subtitle">Ceux qui vous doivent de l'argent : à surveiller pour le recouvrement.</p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table-report">
+                    <thead>
+                        <tr>
+                            <th>Client</th>
+                            <th>Téléphone</th>
+                            <th>Ventes à crédit</th>
+                            <th>Dû (FC)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="clientsCrediteursBody">
+                        <tr><td colspan="4" style="text-align: center; color: var(--gray-500); padding: 30px;">Chargement...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== SECTION DETTES & CRÉDITS ==================== -->
+<div id="dettesSection" class="report-section">
+    <div class="explain-box">
+        <i class="bi bi-lightbulb"></i>
+        <div><strong>Dettes & Crédits :</strong> l'argent que vos clients vous doivent encore. Un crédit « en retard » est une dette qui aurait dû être payée. Relancez ces clients en priorité.</div>
+    </div>
+
+    <div id="dettesAlert"></div>
+
+    <div id="dettesMiniStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;"></div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-credit-card text-warning"></i> Crédits par client</h3>
+                <p class="report-subtitle">Tous les clients qui doivent encore de l'argent, du plus endetté au moins endetté.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Client</th>
+                        <th>Téléphone</th>
+                        <th>Nombre de crédits</th>
+                        <th>Dû (FC)</th>
+                        <th>Dû ($)</th>
+                        <th>Dernière échéance</th>
+                        <th>Retard</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody id="dettesClientsBody">
+                    <tr><td colspan="8" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <div class="report-card-header">
+            <div>
+                <h3 class="report-card-title"><i class="bi bi-exclamation-triangle text-danger"></i> Crédits qui traînent (retard de + de 30 jours)</h3>
+                <p class="report-subtitle">Les dettes les plus anciennes : l'argent bloqué le plus longtemps. À relancer en priorité.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table-report">
+                <thead>
+                    <tr>
+                        <th>Client</th>
+                        <th>Téléphone</th>
+                        <th>Montant (FC)</th>
+                        <th>Montant ($)</th>
+                        <th>Date de vente</th>
+                        <th>Échéance</th>
+                        <th>Retard</th>
+                    </tr>
+                </thead>
+                <tbody id="creditsTrainesBody">
+                    <tr><td colspan="7" style="text-align: center; color: var(--gray-500); padding: 40px;">Chargement...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let activeReportTab = 'capital';
+let evolutionCurrency = 'CDF';
+let rawEvolution = [];
+let evolutionChartInstance = null;
+let modeChartInstance = null;
+let topProductsChartInstance = null;
+const COLORS = ['#1e3a8a', '#10b981', '#6366f1', '#f59e0b', '#ec4899', '#06b6d4', '#8b5cf6', '#14b8a6'];
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadReport('capital');
+});
+
+function switchReportTab(tab) {
+    activeReportTab = tab;
+    document.querySelectorAll('.report-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    document.querySelectorAll('.report-section').forEach(sec => {
+        sec.classList.toggle('active', sec.id === tab + 'Section');
+    });
+    loadReport(tab);
+}
+
+function reloadActiveReport() {
+    if (activeReportTab === 'activites') { loadActivites(); return; }
+    loadReport(activeReportTab);
+}
+
+function currentPeriod() {
+    return document.getElementById('reportPeriodSelect').value || 'month';
+}
+
+function formatNumber(n, currency) {
+    const val = Number(n || 0);
+    const formatted = val.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+    if (currency === 'USD') return '$ ' + formatted;
+    if (currency === 'CDF') return formatted + ' FC';
+    return formatted;
+}
+
+function formatDateTime(d) {
+    if (!d) return '-';
+    return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
+        ' ' + new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDate(d) {
+    if (!d) return '-';
+    return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function kpiCard(iconClass, colorClass, label, value, sub, color) {
+    return `
+        <div class="stats-card-refined">
+            <div class="icon-badge ${colorClass}"><i class="${iconClass}"></i></div>
+            <div style="min-width:0;">
+                <div style="font-size:0.85rem;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:0.5px;overflow-wrap:anywhere;">${label}</div>
+                <div style="font-size:1.3rem;font-weight:800;color:${color || 'var(--gray-900)'};margin:2px 0;line-height:1.2;overflow-wrap:anywhere;word-break:break-word;">${value}</div>
+                <div style="font-size:0.82rem;color:var(--gray-500);line-height:1.4;overflow-wrap:anywhere;">${sub}</div>
+            </div>
+        </div>`;
+}
+
+function valueCard(iconClass, colorClass, label, valueCdf, valueUsd) {
+    return `
+        <div style="background:#f8fafc;border:1px solid var(--gray-200);border-radius:12px;padding:16px;min-width:0;overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                <span class="icon-badge ${colorClass}" style="width:34px;height:34px;font-size:1rem;border-radius:9px;flex-shrink:0;"><i class="${iconClass}"></i></span>
+                <span style="font-size:0.82rem;font-weight:700;color:var(--gray-600);line-height:1.3;overflow-wrap:anywhere;">${label}</span>
+            </div>
+            <div style="font-size:1.15rem;font-weight:800;color:var(--gray-900);line-height:1.25;overflow-wrap:anywhere;word-break:break-word;">${valueCdf}</div>
+            <div style="font-size:0.85rem;color:var(--gray-500);overflow-wrap:anywhere;">${valueUsd}</div>
+        </div>`;
+}
+
+function statusBadge(status) {
+    const labels = {
+        completed: 'Payée', pending: 'Crédit / Attente', cancelled: 'Annulée',
+        disponible: 'Disponible', faible: 'Stock faible', epuise: 'Épuisé',
+        'En cours': 'En cours', 'Retard': 'Retard'
+    };
+    const cls = ['completed', 'disponible'].includes(status) ? 'status-completed'
+             : ['pending', 'faible', 'En cours'].includes(status) ? 'status-pending'
+             : ['cancelled', 'epuise', 'Retard'].includes(status) ? 'status-danger' : 'status-pending';
+    return `<span class="status-badge ${cls}">${labels[status] || status}</span>`;
+}
+
+function rankBadge(i) {
+    const cls = i === 0 ? 'rank-1' : i === 1 ? 'rank-2' : i === 2 ? 'rank-3' : 'rank-other';
+    return `<span class="rank-badge ${cls}">${i + 1}</span>`;
+}
+
+function setEvolutionCurrency(currency) {
+    evolutionCurrency = currency;
+    document.getElementById('evolUsdBtn').className = currency === 'USD' ? 'btn btn-primary btn-sm' : 'btn btn-outline-primary btn-sm';
+    document.getElementById('evolCdfBtn').className = currency === 'CDF' ? 'btn btn-primary btn-sm' : 'btn btn-outline-primary btn-sm';
+    renderEvolutionChart();
+}
+
+// ==================== CHARGEMENT ====================
+
+let cachedReport = null;
+async function fetchReport() {
+    const period = currentPeriod();
+    const response = await fetch('/api/rapports/complet?periode=' + period);
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message);
+    cachedReport = data;
+    return data;
+}
+
+async function loadReport(tab) {
+    try {
+        if (tab === 'activites') { loadActivites(); return; }
+        const data = await fetchReport();
+        document.getElementById('periodBanner').style.display = 'block';
+        document.getElementById('periodBannerText').textContent =
+            `Période affichée : ${data.label_periode} — du ${data.date_debut ? formatDate(data.date_debut) : 'début'} au ${data.date_fin ? formatDate(data.date_fin) : 'aujourd\'hui'}`;
+
+        if (tab === 'capital') renderCapital(data);
+        else if (tab === 'synthese') renderSynthese(data);
+        else if (tab === 'produits') renderProduits(data);
+        else if (tab === 'reappro') renderReappro(data);
+        else if (tab === 'clients') renderClients(data);
+        else if (tab === 'dettes') renderDettes(data);
+    } catch (error) {
+        console.error('Erreur rapport:', error);
+    }
+}
+
+// ==================== CAPITAL ====================
+
+function renderCapital(data) {
+    const c = data.capital;
+    const actifPositif = c.actif_total_usd >= 0;
+
+    document.getElementById('capitalKpis').innerHTML =
+        kpiCard('bi bi-bank', 'success', 'Actif total (votre capital)', formatNumber(c.actif_total_cdf, 'CDF'), formatNumber(c.actif_total_usd, 'USD'), actifPositif ? '#059669' : '#dc2626') +
+        kpiCard('bi bi-box-seam', 'primary', 'Stock (valeur de revente)', formatNumber(c.stock_vente_cdf, 'CDF'), formatNumber(c.stock_vente_usd, 'USD')) +
+        kpiCard('bi bi-wallet2', 'indigo', 'Ventes cumulées', formatNumber(c.ventes_total_cdf, 'CDF'), formatNumber(c.ventes_total_usd, 'USD')) +
+        kpiCard('bi bi-graph-up-arrow', 'success', 'Bénéfice total cumulé', formatNumber(c.benefice_total_cdf, 'CDF'), formatNumber(c.benefice_total_usd, 'USD'), c.benefice_total_usd >= 0 ? '#059669' : '#dc2626') +
+        kpiCard('bi bi-credit-card', 'danger', 'Créances (dettes clients)', formatNumber(c.creances_cdf, 'CDF'), formatNumber(c.creances_usd, 'USD'), 'Argent que les clients vous doivent', '#dc2626') +
+        kpiCard('bi bi-cash', 'warning', 'Caisse disponible', formatNumber(c.caisse_cdf, 'CDF'), formatNumber(c.caisse_usd, 'USD'), 'Argent disponible en caisse', '#b45309');
+
+    document.getElementById('stockValueBox').innerHTML =
+        valueCard('bi bi-box', 'primary', 'Valeur au prix d\'achat (capital investi)', formatNumber(c.stock_achat_cdf, 'CDF'), formatNumber(c.stock_achat_usd, 'USD')) +
+        valueCard('bi bi-box2', 'success', 'Valeur au prix de vente (si tout se vend)', formatNumber(c.stock_vente_cdf, 'CDF'), formatNumber(c.stock_vente_usd, 'USD'));
+
+    document.getElementById('moneyBox').innerHTML =
+        valueCard('bi bi-cash-stack', 'indigo', 'Toutes vos ventes depuis le début', formatNumber(c.ventes_total_cdf, 'CDF'), formatNumber(c.ventes_total_usd, 'USD')) +
+        valueCard('bi bi-graph-up-arrow', 'success', 'Bénéfice gagné depuis le début', formatNumber(c.benefice_total_cdf, 'CDF'), formatNumber(c.benefice_total_usd, 'USD')) +
+        valueCard('bi bi-credit-card', 'danger', 'Créances (à encaisser)', formatNumber(c.creances_cdf, 'CDF'), formatNumber(c.creances_usd, 'USD')) +
+        valueCard('bi bi-piggy-bank', 'warning', 'Caisse (argent disponible)', formatNumber(c.caisse_cdf, 'CDF'), formatNumber(c.caisse_usd, 'USD'));
+
+    const anneesBody = document.getElementById('capitalAnneesBody');
+    const annees = c.ca_par_annee || [];
+    if (annees.length === 0) {
+        anneesBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-500);padding:40px;">Aucune vente pour le moment</td></tr>';
+    } else {
+        anneesBody.innerHTML = annees.map(([annee, a]) => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${annee}</strong></td>
+                <td><span class="badge bg-primary" style="font-size:0.85rem;padding:5px 10px;border-radius:8px;">${a.ventes}</span></td>
+                <td style="font-weight:700;">${formatNumber(a.ca_cdf, 'CDF')}</td>
+                <td style="color:var(--gray-600);">${formatNumber(a.ca_usd, 'USD')}</td>
+                <td style="font-weight:700;color:${a.benefice_cdf >= 0 ? '#047857' : '#dc2626'};">${formatNumber(a.benefice_cdf, 'CDF')}</td>
+                <td style="color:var(--gray-600);">${formatNumber(a.benefice_usd, 'USD')}</td>
+                <td><span class="status-badge ${a.marge >= 30 ? 'status-completed' : 'status-pending'}">${a.marge}%</span></td>
+            </tr>
+        `).join('');
+    }
+}
+
+// ==================== SYNTHÈSE ====================
+
+function renderSynthese(data) {
+    const s = data.synthese;
+    const beneficePositif = s.benefice_cdf >= 0;
+
+    document.getElementById('syntheseKpis').innerHTML =
+        kpiCard('bi bi-wallet2', 'primary', 'Chiffre d\'affaires', formatNumber(s.ca_cdf, 'CDF'), formatNumber(s.ca_usd, 'USD')) +
+        kpiCard('bi bi-graph-up-arrow', beneficePositif ? 'success' : 'danger', 'Bénéfice', formatNumber(s.benefice_cdf, 'CDF'),
+            `${formatNumber(s.benefice_usd, 'USD')} — marge ${s.marge_cdf}%`, beneficePositif ? '#059669' : '#dc2626') +
+        kpiCard('bi bi-cart-check', 'indigo', 'Ventes', s.nb_ventes, s.nb_payees + ' payée(s), ' + s.nb_credits + ' crédit(s)') +
+        kpiCard('bi bi-basket', 'warning', 'Panier moyen', formatNumber(s.panier_moyen_cdf, 'CDF'), formatNumber(s.panier_moyen_usd, 'USD'), '#b45309') +
+        kpiCard('bi bi-people', 'success', 'Clients', s.clients_actifs, s.nouveaux_clients + ' nouveau(x), ' + s.clients_reguliers + ' régulier(s)', '#059669') +
+        kpiCard('bi bi-credit-card', 'danger', 'Dettes à recouvrer', formatNumber(s.dettes_cdf, 'CDF'), s.dettes_en_retard + ' crédit(s) en retard', '#dc2626');
+
+    const perBody = document.getElementById('benefPeriodesBody');
+    const periods = data.resume_periodes || [];
+    perBody.innerHTML = periods.map(rp => {
+        const color = rp.benefice_usd >= 0 ? '#047857' : '#dc2626';
+        return `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(rp.label)}</strong></td>
+                <td>${rp.ventes}</td>
+                <td style="font-weight:700;">${formatNumber(rp.ca_cdf, 'CDF')}</td>
+                <td style="font-weight:700;color:${color};">${formatNumber(rp.benefice_cdf, 'CDF')}</td>
+                <td style="color:var(--gray-600);">${formatNumber(rp.benefice_usd, 'USD')}</td>
+                <td><span class="status-badge ${rp.marge >= 30 ? 'status-completed' : 'status-pending'}">${rp.marge}%</span></td>
+            </tr>`;
+    }).join('');
+
+    rawEvolution = data.evolution || [];
+    renderEvolutionChart();
+    renderModeChart(data.par_mode);
+    renderTopProductsChart((data.top_produits || []).slice(0, 5));
+}
+
+function renderEvolutionChart() {
+    const ctx = document.getElementById('evolutionChart').getContext('2d');
+    if (evolutionChartInstance) evolutionChartInstance.destroy();
+
+    const isUsd = evolutionCurrency === 'USD';
+    const values = rawEvolution.map(e => isUsd ? e.usd : e.cdf);
+    const labels = rawEvolution.map(e => e.label);
+    const strokeColor = isUsd ? '#10b981' : '#1e3a8a';
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+    gradient.addColorStop(0, isUsd ? 'rgba(16, 185, 129, 0.35)' : 'rgba(30, 58, 138, 0.35)');
+    gradient.addColorStop(1, 'rgba(30, 58, 138, 0.0)');
+
+    evolutionChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Ventes (' + (isUsd ? '$' : 'FC') + ')',
+                data: values,
+                borderColor: strokeColor,
+                borderWidth: 3,
+                backgroundColor: gradient,
+                fill: true,
+                tension: 0.38,
+                pointBackgroundColor: strokeColor,
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0f172a',
+                    padding: 12,
+                    callbacks: {
+                        label: (context) => {
+                            const count = rawEvolution[context.dataIndex] ? rawEvolution[context.dataIndex].count : 0;
+                            return [
+                                'Montant: ' + formatNumber(context.raw, isUsd ? 'USD' : 'CDF'),
+                                'Ventes: ' + count
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#64748b' } },
+                y: {
+                    grid: { color: '#f1f5f9' },
+                    ticks: {
+                        font: { size: 11 },
+                        color: '#64748b',
+                        callback: (val) => {
+                            if (isUsd) return '$ ' + val;
+                            if (val >= 1000000) return (val / 1000000).toFixed(1) + 'M';
+                            if (val >= 1000) return (val / 1000).toFixed(0) + 'k';
+                            return val;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderModeChart(parMode) {
+    const ctx = document.getElementById('modeChart').getContext('2d');
+    if (modeChartInstance) modeChartInstance.destroy();
+
+    const labelsMap = { cash: 'Comptant', credit: 'Crédit', mobile: 'Mobile Money', bank: 'Banque' };
+    const entries = Object.entries(parMode || {}).filter(([, v]) => v > 0);
+    if (entries.length === 0) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        return;
+    }
+
+    modeChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: entries.map(([k]) => labelsMap[k] || k),
+            datasets: [{
+                data: entries.map(([, v]) => v),
+                backgroundColor: COLORS.slice(0, entries.length),
+                borderWidth: 2,
+                borderColor: '#ffffff',
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 14, font: { size: 11, weight: '600' } } },
+                tooltip: {
+                    backgroundColor: '#0f172a',
+                    padding: 12,
+                    callbacks: {
+                        label: (context) => {
+                            const total = entries.reduce((s, [, v]) => s + v, 0);
+                            const pct = total ? Math.round((context.raw / total) * 100) : 0;
+                            return context.label + ': ' + context.raw + ' (' + pct + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderTopProductsChart(top) {
+    const ctx = document.getElementById('topProductsChart').getContext('2d');
+    if (topProductsChartInstance) topProductsChartInstance.destroy();
+
+    const items = (top || []).reverse();
+
+    topProductsChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: items.map(p => p.nom.length > 20 ? p.nom.substring(0, 20) + '…' : p.nom),
+            datasets: [{
+                label: 'Quantité vendue',
+                data: items.map(p => p.qte),
+                backgroundColor: 'rgba(79, 70, 229, 0.75)',
+                borderRadius: 6,
+                barThickness: 20
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0f172a',
+                    padding: 12,
+                    callbacks: {
+                        label: (context) => {
+                            const p = items[context.dataIndex];
+                            return ['Quantité: ' + context.raw, 'Revenu: ' + formatNumber(p.revenu_cdf, 'CDF')];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 }, color: '#64748b' } },
+                y: { grid: { display: false }, ticks: { font: { size: 11, weight: '600' }, color: '#334155' } }
+            }
+        }
+    });
+}
+
+// ==================== PRODUITS & STOCK ====================
+
+function topProduitList(items, limit) {
+    // Affiche les produits d'une liste (nom + quantité) avec les médailles
+    const list = (items || []).slice(0, limit || 3);
+    if (list.length === 0) return '<span style="color:var(--gray-400);">—</span>';
+    return list.map((p, i) => `
+        <div style="display:flex;align-items:center;gap:8px;margin:4px 0;">
+            ${rankBadge(i)}
+            <div>
+                <div style="font-weight:700;color:var(--gray-900);">${escapeHtml(p.nom)}</div>
+                <div style="font-size:0.78rem;color:var(--gray-500);">${escapeHtml(p.categorie || '')} · ${p.qte} vendu(s)</div>
+            </div>
+        </div>`).join('');
+}
+
+function renderProduits(data) {
+    // Top produits
+    const topBody = document.getElementById('topProduitsBody');
+    if (!data.top_produits || data.top_produits.length === 0) {
+        topBody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--gray-500);padding:40px;">Aucune vente sur cette période</td></tr>';
+    } else {
+        topBody.innerHTML = data.top_produits.map((p, i) => `
+            <tr>
+                <td>${rankBadge(i)}</td>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(p.nom)}</strong><div style="font-size:0.75rem;color:var(--gray-500);font-family:monospace;">${escapeHtml(p.reference)}</div></td>
+                <td>${escapeHtml(p.categorie || '-')}</td>
+                <td><span class="badge bg-primary" style="font-size:0.85rem;padding:5px 10px;border-radius:8px;">${p.qte}</span></td>
+                <td>${p.nb_ventes}</td>
+                <td style="font-weight:700;">${formatNumber(p.revenu_cdf, 'CDF')}</td>
+                <td style="font-weight:700;color:${p.benefice_cdf >= 0 ? '#047857' : '#dc2626'};">${formatNumber(p.benefice_cdf, 'CDF')}</td>
+                <td style="color:var(--gray-600);">${formatNumber(p.benefice_usd, 'USD')}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Top par année
+    const anneeBody = document.getElementById('topParAnneeBody');
+    const parAnnee = data.top_par_annee || [];
+    if (parAnnee.length === 0) {
+        anneeBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--gray-500);padding:30px;">Aucune vente</td></tr>';
+    } else {
+        anneeBody.innerHTML = parAnnee.map(a => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${a.annee}</strong></td>
+                <td>${topProduitList(a.top, 3)}</td>
+                <td>${a.nb_produits} produit(s)</td>
+                <td style="color:var(--gray-600);font-weight:700;">${a.top.length ? formatNumber(a.top[0].revenu_usd, 'USD') : '-'}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Top par trimestre
+    const trimBody = document.getElementById('topParTrimestreBody');
+    const parTrim = data.top_par_trimestre || [];
+    if (parTrim.length === 0) {
+        trimBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--gray-500);padding:30px;">Aucune vente</td></tr>';
+    } else {
+        trimBody.innerHTML = parTrim.map(t => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(t.trimestre)}</strong></td>
+                <td>${topProduitList(t.top, 3)}</td>
+                <td>${t.nb_produits} produit(s)</td>
+                <td style="color:var(--gray-600);font-weight:700;">${t.top.length ? formatNumber(t.top[0].revenu_usd, 'USD') : '-'}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Détail article → client → montant → reste en stock
+    const detailBody = document.getElementById('detailArticlesBody');
+    const details = data.detail_articles || [];
+    if (details.length === 0) {
+        detailBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray-500);padding:40px;">Aucune vente sur cette période</td></tr>';
+    } else {
+        detailBody.innerHTML = details.map(a => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(a.nom)}</strong></td>
+                <td>${escapeHtml(a.categorie || '-')}</td>
+                <td><span class="badge bg-primary" style="font-size:0.85rem;padding:5px 10px;border-radius:8px;">${a.total_vendu}</span> <span style="font-size:0.78rem;color:var(--gray-500);">(${a.nb_clients} client(s))</span></td>
+                <td>${a.stock_restant > 0 ? `<span class="status-badge status-completed">${a.stock_restant} en stock</span>` : `<span class="status-badge status-danger">Épuisé</span>`}</td>
+                <td style="font-size:0.85rem;">${(a.clients || []).map(c => `
+                    <div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0;border-bottom:1px dashed var(--gray-200);">
+                        <span><strong>${escapeHtml(c.client)}</strong>${c.telephone ? ' <span style="color:var(--gray-400);font-size:0.75rem;">· ' + escapeHtml(c.telephone) + '</span>' : ''}</span>
+                        <span style="font-weight:700;white-space:nowrap;">${c.qte} × ${formatNumber(c.montant_cdf, 'CDF')}</span>
+                    </div>`).join('') || '<span style="color:var(--gray-400);">—</span>'}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Produits peu demandés
+    const peuBody = document.getElementById('produitsPeuBody');
+    if (!data.produits_peu_demandes || data.produits_peu_demandes.length === 0) {
+        peuBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--gray-500);padding:40px;">Aucune donnée</td></tr>';
+    } else {
+        peuBody.innerHTML = data.produits_peu_demandes.map(p => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(p.nom)}</strong></td>
+                <td style="font-family:monospace;font-size:0.8rem;">${escapeHtml(p.reference)}</td>
+                <td>${escapeHtml(p.categorie || '-')}</td>
+                <td>${p.qte}</td>
+                <td style="font-weight:700;">${formatNumber(p.revenu_cdf, 'CDF')}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Rotation stock
+    const rotBody = document.getElementById('rotationBody');
+    if (!data.rotation_stock || data.rotation_stock.length === 0) {
+        rotBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray-500);padding:40px;">Aucun produit en stock</td></tr>';
+    } else {
+        const max = Math.max.apply(null, data.rotation_stock.map(r => r.rotation));
+        rotBody.innerHTML = data.rotation_stock.map(r => {
+            const pct = max > 0 ? Math.min(100, Math.round(r.rotation / max * 100)) : 0;
+            return `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(r.nom)}</strong></td>
+                <td>${escapeHtml(r.categorie)}</td>
+                <td style="font-weight:700;">${r.vendu_periode}</td>
+                <td>${r.stock}</td>
+                <td style="min-width:140px;">
+                    <div style="font-weight:700;color:${r.rotation >= 2 ? '#047857' : r.rotation >= 1 ? '#d97706' : '#64748b'};">${r.rotation === 99.99 ? 'Écoulé ' + r.vendu_periode + '×' : r.rotation.toFixed(1) + '×'}</div>
+                    <div class="progress-slim" style="margin-top:5px;"><div style="width:${pct}%;background:${r.rotation >= 2 ? '#10b981' : r.rotation >= 1 ? '#f59e0b' : '#94a3b8'};"></div></div>
+                </td>
+                <td>${statusBadge(r.statut)}</td>
+            </tr>`;
+        }).join('');
+    }
+}
+
+// ==================== RÉAPPROVISIONNEMENTS ====================
+
+function renderReappro(data) {
+    const reaps = data.reapprovisionnements || [];
+    const cats = data.reappro_par_categorie || [];
+
+    const totalFois = reaps.reduce((s, r) => s + r.nb_fois, 0);
+    const totalQte = reaps.reduce((s, r) => s + r.quantite_totale, 0);
+
+    document.getElementById('reapproMiniStats').innerHTML = `
+        <div class="mini-stat"><div class="val">${totalFois}</div><div class="lbl">Réapprovisionnements</div></div>
+        <div class="mini-stat"><div class="val">${totalQte}</div><div class="lbl">Unités ajoutées au total</div></div>
+        <div class="mini-stat"><div class="val">${reaps.length}</div><div class="lbl">Articles concernés</div></div>
+        <div class="mini-stat"><div class="val">${cats.length}</div><div class="lbl">Catégories concernées</div></div>`;
+
+    const artBody = document.getElementById('reapproArticlesBody');
+    if (reaps.length === 0) {
+        artBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray-500);padding:40px;">Aucun réapprovisionnement sur cette période. Ajoutez du stock depuis la page Stock.</td></tr>';
+    } else {
+        artBody.innerHTML = reaps.map(r => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(r.nom)}</strong></td>
+                <td>${escapeHtml(r.categorie || '-')}</td>
+                <td><span class="badge bg-primary" style="font-size:0.85rem;padding:5px 10px;border-radius:8px;">${r.nb_fois} fois</span></td>
+                <td style="font-weight:700;color:#047857;">+${r.quantite_totale}</td>
+                <td>${r.stock_actuel}</td>
+                <td>${r.date_dernier ? formatDate(r.date_dernier) : '-'}</td>
+            </tr>
+        `).join('');
+    }
+
+    const catBody = document.getElementById('reapproCatsBody');
+    if (cats.length === 0) {
+        catBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--gray-500);padding:40px;">Aucune donnée</td></tr>';
+    } else {
+        const max = Math.max.apply(null, cats.map(c => c.quantite_totale));
+        catBody.innerHTML = cats.map(c => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(c.categorie)}</strong></td>
+                <td>${c.nb_fois} fois</td>
+                <td style="min-width:160px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="progress-slim" style="flex:1;"><div style="width:${max ? Math.round(c.quantite_totale / max * 100) : 0}%;background:#10b981;"></div></div>
+                        <span style="font-weight:700;color:#047857;">+${c.quantite_totale}</span>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+}
+
+// ==================== HISTORIQUE DES ACTIVITÉS ====================
+
+const ACTIVITE_LABELS = {
+    creation: 'Création', modification: 'Modification', reapprovisionnement: 'Réapprovisionnement',
+    vente: 'Vente', epuisement: 'Épuisement', retour: 'Retour / Annulation', suppression: 'Suppression'
+};
+const ACTIVITE_CLS = {
+    creation: 'status-completed', modification: 'status-pending', reapprovisionnement: 'status-faible',
+    vente: 'status-disponible', epuisement: 'status-danger', retour: 'status-pending', suppression: 'status-cancelled'
+};
+
+function activiteBadge(type) {
+    return `<span class="status-badge ${ACTIVITE_CLS[type] || 'status-pending'}">${ACTIVITE_LABELS[type] || type}</span>`;
+}
+
+function variationBadge(v) {
+    const n = Number(v || 0);
+    if (n > 0) return `<span class="status-badge status-completed" style="font-weight:800;">+${n}</span>`;
+    if (n < 0) return `<span class="status-badge status-danger" style="font-weight:800;">${n}</span>`;
+    return `<span class="status-badge">0</span>`;
+}
+
+async function loadActivites() {
+    try {
+        const period = currentPeriod();
+        const produitId = document.getElementById('activiteProduitFilter').value || '';
+        const qs = 'periode=' + period + (produitId ? '&produit_id=' + produitId : '');
+        const resStock = await fetch('/api/activites/stock?' + qs);
+        const stock = await resStock.json();
+        if (!stock.success) throw new Error(stock.message);
+        const resCaisse = await fetch('/api/activites/caisse');
+        const caisse = await resCaisse.json();
+        renderActivites(stock, caisse);
+
+        document.getElementById('periodBanner').style.display = 'block';
+        document.getElementById('periodBannerText').textContent =
+            `Période affichée : ${stock.label_periode}`;
+    } catch (error) {
+        console.error('Erreur activités:', error);
+    }
+}
+
+function renderActivites(stock, caisse) {
+    const resume = stock.resume_par_produit || [];
+    const activites = stock.activites || [];
+    const totalEp = stock.total_epuisements || 0;
+
+    document.getElementById('activitesMiniStats').innerHTML = `
+        <div class="mini-stat"><div class="val">${stock.total_activites}</div><div class="lbl">Activités enregistrées</div></div>
+        <div class="mini-stat"><div class="val">${stock.total_produits_actifs}</div><div class="lbl">Produits suivis</div></div>
+        <div class="mini-stat"><div class="val">${resume.reduce((s, r) => s + r.nb_ventes, 0)}</div><div class="lbl">Fois où des articles ont été vendus</div></div>
+        <div class="mini-stat"><div class="val" style="color:${totalEp > 0 ? '#dc2626' : '#059669'};">${totalEp}</div><div class="lbl">Fois où un stock a été épuisé</div></div>`;
+
+    // Résumé par produit
+    const resumeBody = document.getElementById('resumeActivitesBody');
+    if (resume.length === 0) {
+        resumeBody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--gray-500);padding:40px;">Aucune activité enregistrée</td></tr>';
+    } else {
+        resumeBody.innerHTML = resume.map(r => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(r.produit_nom)}</strong></td>
+                <td>${escapeHtml(r.categorie || '-')}</td>
+                <td><span class="badge bg-primary" style="font-size:0.85rem;padding:5px 10px;border-radius:8px;">${r.nb_ventes} fois</span></td>
+                <td style="font-weight:700;color:#334155;">${r.qte_vendue}</td>
+                <td>${r.nb_reappro} fois</td>
+                <td>${r.nb_modification} fois</td>
+                <td style="color:${r.nb_epuisement > 0 ? '#dc2626' : '#64748b'};font-weight:700;">${r.nb_epuisement > 0 ? r.nb_epuisement + ' fois' : 'Jamais'}</td>
+                <td style="font-weight:700;">${r.stock_actuel}</td>
+                <td>${r.statut_actuel === 'Épuisé' ? '<span class="status-badge status-danger">Épuisé</span>' : r.statut_actuel === 'En stock' ? '<span class="status-badge status-completed">En stock</span>' : '<span class="status-badge status-cancelled">Supprimé</span>'}</td>
+                <td style="font-size:0.82rem;color:var(--gray-500);">${formatDateTime(r.derniere_activite)}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Alimenter le filtre produit (une fois)
+    const filter = document.getElementById('activiteProduitFilter');
+    const currentVal = filter.value;
+    if (filter.options.length <= 1) {
+        resume.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.produit_id;
+            opt.textContent = r.produit_nom;
+            filter.appendChild(opt);
+        });
+    }
+    filter.value = currentVal;
+
+    // Journal détaillé
+    const detailBody = document.getElementById('activitesDetailBody');
+    if (activites.length === 0) {
+        detailBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-500);padding:40px;">Aucune activité sur cette période</td></tr>';
+    } else {
+        detailBody.innerHTML = activites.map(a => `
+            <tr>
+                <td style="font-size:0.82rem;color:var(--gray-500);white-space:nowrap;">${formatDateTime(a.date)}</td>
+                <td>${activiteBadge(a.type)}</td>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(a.produit_nom)}</strong></td>
+                <td style="text-align:center;">${a.quantite_avant}</td>
+                <td style="text-align:center;font-weight:700;">${a.quantite_apres}</td>
+                <td>${variationBadge(a.variation)}</td>
+                <td style="font-size:0.85rem;color:var(--gray-600);">${escapeHtml(a.description || '')}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Caisse
+    const cResume = caisse.resume || {};
+    document.getElementById('caisseResumeBox').innerHTML = `
+        <div class="mini-stat"><div class="val" style="color:#059669;">${formatNumber(cResume.entrees_cdf, 'CDF')}</div><div class="lbl">Entrées (FC)</div></div>
+        <div class="mini-stat"><div class="val" style="color:#059669;">${formatNumber(cResume.entrees_usd, 'USD')}</div><div class="lbl">Entrées ($)</div></div>
+        <div class="mini-stat"><div class="val" style="color:#dc2626;">${formatNumber(cResume.sorties_cdf, 'CDF')}</div><div class="lbl">Sorties (FC)</div></div>
+        <div class="mini-stat"><div class="val" style="color:#dc2626;">${formatNumber(cResume.sorties_usd, 'USD')}</div><div class="lbl">Sorties ($)</div></div>
+        <div class="mini-stat"><div class="val" style="color:#4f46e5;">${formatNumber(cResume.solde_cdf, 'CDF')}</div><div class="lbl">Solde (FC)</div></div>
+        <div class="mini-stat"><div class="val" style="color:#4f46e5;">${formatNumber(cResume.solde_usd, 'USD')}</div><div class="lbl">Solde ($)</div></div>
+        <div class="mini-stat"><div class="val">${cResume.nb_mouvements}</div><div class="lbl">Mouvements au total</div></div>`;
+
+    const mvts = caisse.mouvements || [];
+    const caisseBody = document.getElementById('caisseMouvementsBody');
+    if (mvts.length === 0) {
+        caisseBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray-500);padding:40px;">Aucun mouvement de caisse</td></tr>';
+    } else {
+        caisseBody.innerHTML = mvts.map(m => `
+            <tr>
+                <td style="font-size:0.82rem;color:var(--gray-500);white-space:nowrap;">${formatDateTime(m.date)}</td>
+                <td>${escapeHtml(m.libelle)}</td>
+                <td>${m.type === 'in' ? '<span class="status-badge status-completed">Entrée</span>' : '<span class="status-badge status-cancelled">Sortie</span>'}</td>
+                <td style="font-weight:700;color:${m.type === 'in' ? '#047857' : '#dc2626'};">${formatNumber(m.montant, m.devise === 'USD' ? 'USD' : 'CDF')}</td>
+                <td><span class="currency-pill ${m.devise === 'USD' ? 'usd' : 'cdf'}">${escapeHtml(m.devise)}</span></td>
+                <td style="color:var(--gray-600);">${formatNumber(m.solde_apres, m.devise === 'USD' ? 'USD' : 'CDF')}</td>
+            </tr>
+        `).join('');
+    }
+}
+
+// ==================== CLIENTS ====================
+
+function renderClients(data) {
+    const s = data.synthese;
+    document.getElementById('clientsMiniStats').innerHTML = `
+        <div class="mini-stat"><div class="val">${s.clients_actifs}</div><div class="lbl">Clients actifs</div></div>
+        <div class="mini-stat"><div class="val">${s.nouveaux_clients}</div><div class="lbl">Nouveaux clients</div></div>
+        <div class="mini-stat"><div class="val">${s.clients_reguliers}</div><div class="lbl">Clients réguliers (2+ achats)</div></div>
+        <div class="mini-stat"><div class="val" style="color:#059669;">${formatNumber(s.ca_cdf, 'CDF')}</div><div class="lbl">Total dépensé par les clients</div></div>`;
+
+    const topBody = document.getElementById('topClientsBody');
+    if (!data.top_clients || data.top_clients.length === 0) {
+        topBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray-500);padding:40px;">Aucun client sur cette période</td></tr>';
+    } else {
+        topBody.innerHTML = data.top_clients.map((c, i) => `
+            <tr>
+                <td>${rankBadge(i)}</td>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(c.client)}</strong></td>
+                <td>${escapeHtml(c.telephone || '-')}</td>
+                <td><span class="badge bg-primary" style="font-size:0.85rem;padding:5px 10px;border-radius:8px;">${c.nb_ventes}</span></td>
+                <td style="font-weight:700;">${formatNumber(c.ca_cdf, 'CDF')}</td>
+                <td style="color:var(--gray-600);">${formatNumber(c.ca_usd, 'USD')}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Tous les clients
+    const allClients = buildAllClients(data);
+    const allBody = document.getElementById('allClientsBody');
+    if (allClients.length === 0) {
+        allBody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray-500);padding:40px;">Aucun client</td></tr>';
+    } else {
+        allBody.innerHTML = allClients.map(c => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(c.client)}</strong></td>
+                <td>${escapeHtml(c.telephone || '-')}</td>
+                <td><span class="badge bg-primary" style="font-size:0.85rem;padding:5px 10px;border-radius:8px;">${c.nb_ventes}</span></td>
+                <td style="font-weight:700;">${formatNumber(c.ca_cdf, 'CDF')}</td>
+                <td style="color:var(--gray-600);">${formatNumber(c.ca_usd, 'USD')}</td>
+                <td>${c.nb_ventes >= 5 ? '<span class="status-badge status-completed">Fidèle</span>' : c.nb_ventes >= 2 ? '<span class="status-badge status-pending">Régulier</span>' : '<span class="status-badge">Nouveau</span>'}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Clients payeurs
+    const payBody = document.getElementById('clientsPayeursBody');
+    const payeurs = data.clients_payeurs || [];
+    if (payeurs.length === 0) {
+        payBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--gray-500);padding:30px;">Aucun paiement comptant sur cette période</td></tr>';
+    } else {
+        payBody.innerHTML = payeurs.map(c => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(c.client)}</strong></td>
+                <td>${escapeHtml(c.telephone || '-')}</td>
+                <td><span class="badge bg-primary" style="font-size:0.85rem;padding:5px 10px;border-radius:8px;">${c.nb_ventes}</span></td>
+                <td style="font-weight:700;color:#047857;">${formatNumber(c.montant_cdf, 'CDF')}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Clients créditeurs
+    const credBody = document.getElementById('clientsCrediteursBody');
+    const crediteurs = data.clients_crediteurs || [];
+    if (crediteurs.length === 0) {
+        credBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--gray-500);padding:30px;">Aucun achat à crédit sur cette période</td></tr>';
+    } else {
+        credBody.innerHTML = crediteurs.map(c => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(c.client)}</strong></td>
+                <td>${escapeHtml(c.telephone || '-')}</td>
+                <td><span class="badge bg-warning" style="font-size:0.85rem;padding:5px 10px;border-radius:8px;">${c.nb_ventes}</span></td>
+                <td style="font-weight:700;color:#b45309;">${formatNumber(c.montant_cdf, 'CDF')}</td>
+            </tr>
+        `).join('');
+    }
+}
+
+function buildAllClients(data) {
+    const top = data.top_clients || [];
+    const dettes = data.dettes_clients || [];
+    const map = {};
+    top.forEach(c => map[c.client] = c);
+    dettes.forEach(d => {
+        if (!map[d.client]) {
+            map[d.client] = { client: d.client, telephone: d.telephone, nb_ventes: d.nb_credits, ca_cdf: d.montant_cdf, ca_usd: d.montant_usd };
+        }
+    });
+    return Object.values(map).sort((a, b) => b.ca_usd - a.ca_usd);
+}
+
+// ==================== DETTES ====================
+
+function renderDettes(data) {
+    const s = data.synthese;
+
+    const traines = data.credits_traines || [];
+    const alertBox = document.getElementById('dettesAlert');
+    if (traines.length > 0) {
+        alertBox.innerHTML = `
+            <div class="alert-strip danger">
+                <i class="bi bi-exclamation-octagon"></i>
+                <span>⚠️ ${traines.length} crédit(s) en retard de plus de 30 jours représentant <strong>${formatNumber(traines.reduce((sum, t) => sum + t.montant_cdf, 0), 'CDF')}</strong> bloqué(s). Relancez ces clients en priorité.</span>
+            </div>`;
+    } else {
+        alertBox.innerHTML = '<div class="alert-strip success"><i class="bi bi-check-circle"></i><span>Aucun crédit en retard de plus de 30 jours. Bonne santé financière !</span></div>';
+    }
+
+    document.getElementById('dettesMiniStats').innerHTML = `
+        <div class="mini-stat"><div class="val" style="color:#dc2626;">${formatNumber(s.dettes_cdf, 'CDF')}</div><div class="lbl">Total dû par les clients</div></div>
+        <div class="mini-stat"><div class="val" style="color:#b45309;">${s.dettes_en_retard}</div><div class="lbl">Crédits en retard</div></div>
+        <div class="mini-stat"><div class="val">${data.dettes_clients ? data.dettes_clients.length : 0}</div><div class="lbl">Clients débiteurs</div></div>
+        <div class="mini-stat"><div class="val" style="color:#dc2626;">${traines.length}</div><div class="lbl">Crédits qui traînent (30+ jours)</div></div>`;
+
+    const body = document.getElementById('dettesClientsBody');
+    if (!data.dettes_clients || data.dettes_clients.length === 0) {
+        body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--success);padding:40px;">Aucune dette en attente 🎉</td></tr>';
+    } else {
+        body.innerHTML = data.dettes_clients.map(d => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(d.client)}</strong></td>
+                <td>${escapeHtml(d.telephone || '-')}</td>
+                <td>${d.nb_credits}</td>
+                <td style="font-weight:700;">${formatNumber(d.montant_cdf, 'CDF')}</td>
+                <td style="color:var(--gray-600);">${formatNumber(d.montant_usd, 'USD')}</td>
+                <td>${d.echeance ? formatDate(d.echeance) : '-'}</td>
+                <td style="color:${d.jours_retard_max > 30 ? '#dc2626' : d.jours_retard_max > 7 ? '#d97706' : '#64748b'};font-weight:700;">${d.jours_retard_max > 0 ? d.jours_retard_max + ' j' : 'Dans les délais'}</td>
+                <td>${statusBadge(d.statut)}</td>
+            </tr>
+        `).join('');
+    }
+
+    const trBody = document.getElementById('creditsTrainesBody');
+    if (traines.length === 0) {
+        trBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--success);padding:40px;">Aucun crédit en retard de plus de 30 jours 🎉</td></tr>';
+    } else {
+        trBody.innerHTML = traines.map(t => `
+            <tr>
+                <td><strong style="color:var(--gray-900);">${escapeHtml(t.client)}</strong></td>
+                <td>${escapeHtml(t.telephone || '-')}</td>
+                <td style="font-weight:700;color:#dc2626;">${formatNumber(t.montant_cdf, 'CDF')}</td>
+                <td style="color:var(--gray-600);">${formatNumber(t.montant_usd, 'USD')}</td>
+                <td>${t.date_vente ? formatDate(t.date_vente) : '-'}</td>
+                <td>${formatDate(t.echeance)}</td>
+                <td><span class="status-badge status-danger">${t.jours_retard} jours</span></td>
+            </tr>
+        `).join('');
+    }
+}
+</script>
+{% endblock %}
