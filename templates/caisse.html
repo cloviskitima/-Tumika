@@ -373,19 +373,8 @@
         </div>
         <!-- Zone imprimable du rapport -->
         <div style="padding: 32px; flex: 1; overflow-y: auto;" id="printableReportArea">
-            <!-- En-tête officiel -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1e3a5f; padding-bottom: 16px; margin-bottom: 24px;">
-                <div>
-                    <h2 style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #1e293b;">MotoStockIA - #TUMIKA</h2>
-                    <p style="margin: 4px 0 0; font-size: 0.85rem; color: #64748b; font-weight: 500;">Services de Gestion Commerciale &amp; Trésorerie</p>
-                    <p style="margin: 2px 0 0; font-size: 0.8rem; color: #94a3b8;">République Démocratique du Congo</p>
-                </div>
-                <div style="text-align: right;">
-                    <div style="display: inline-block; padding: 6px 14px; background: #1e3a5f; color: white; font-weight: 700; font-size: 0.95rem; border-radius: 6px; text-transform: uppercase;">RAPPORT DE CAISSE</div>
-                    <div id="reportDate" style="font-size: 0.85rem; color: #64748b; margin-top: 6px;">Date: --/--/----</div>
-                    <div id="reportOperator" style="font-size: 0.85rem; color: #64748b; margin-top: 2px;">Opérateur: -</div>
-                </div>
-            </div>
+            <!-- En-tête officiel (design & paramètres de l'entreprise) -->
+            <div id="etatReportHeader"></div>
 
             <!-- Cartes KPI du rapport -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
@@ -474,6 +463,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/etats_style.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     loadCashStatistics();
@@ -854,7 +844,12 @@ function triggerPrintReceipt() {
 async function openReportModal() {
     const modal = document.getElementById('reportModal');
     const now = new Date();
-    document.getElementById('reportDate').textContent = `Date: ${now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
+    const periodeStr = 'Période: ' + now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    await injecterEnTeteEtat('etatReportHeader', 'Rapport de caisse', {
+        reference: 'Rapport synthétique des mouvements de caisse',
+        metaExtra: [periodeStr]
+    });
 
     // Récupérer l'opérateur via les stats (qui contient user_name)
     try {
@@ -879,7 +874,10 @@ async function openReportModal() {
 
         // Récupérer le nom de l'opérateur du premier mouvement
         if (movements.length > 0 && movements[0].operator_name) {
-            document.getElementById('reportOperator').textContent = `Opérateur: ${movements[0].operator_name}`;
+            await injecterEnTeteEtat('etatReportHeader', 'Rapport de caisse', {
+                reference: 'Rapport synthétique des mouvements de caisse',
+                metaExtra: [periodeStr, 'Opérateur: ' + movements[0].operator_name]
+            });
         }
 
         if (movements.length === 0) {

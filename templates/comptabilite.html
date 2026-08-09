@@ -272,13 +272,10 @@
             <button class="btn btn-light btn-sm no-print" onclick="actualiserPlan()" style="border-radius: 10px; font-weight: 600; padding: 8px 14px;">
                 <i class="bi bi-cloud-download"></i> Actualiser plan
             </button>
-            <button class="btn btn-light btn-sm no-print" onclick="window.print()" style="border-radius: 10px; font-weight: 600; padding: 8px 14px;">
+            <button class="btn btn-light btn-sm no-print" onclick="imprimerPageAvecEnTete('Comptabilité Générale')" style="border-radius: 10px; font-weight: 600; padding: 8px 14px;">
                 <i class="bi bi-printer"></i> Imprimer
             </button>
         </div>
-    </div>
-    <div class="print-title" style="margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.4); padding-top: 10px;">
-        <strong>MotoStockIA — #TUMIKA</strong> · Documents comptables (Plan Comptable Général Congolais)
     </div>
 </div>
 
@@ -541,6 +538,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/etats_style.js') }}"></script>
 <script>
 let activeComptaTab = 'plan';
 let comptesCache = [];

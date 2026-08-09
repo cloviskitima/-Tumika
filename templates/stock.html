@@ -409,6 +409,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/etats_style.js') }}"></script>
 <script>
 let webcamStream = null;
 let currentImageField = null;
@@ -1311,104 +1312,66 @@ async function exportStockSheet() {
         const response = await fetch('/api/produits');
         const data = await response.json();
         const products = data.produits || [];
-        
-        const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-        const now = new Date().toLocaleTimeString('fr-FR');
-        
-        let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fiche de Stock - ' + today + '</title><style>';
-        html += '@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");';
-        html += 'body { font-family: "Roboto", Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; color: #333; }';
-        html += '.container { max-width: 1400px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }';
-        html += '.header { text-align: center; border-bottom: 4px solid #2c3e50; padding-bottom: 25px; margin-bottom: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; margin: -40px -40px 30px -40px; }';
-        html += '.header h1 { color: white; margin: 0; font-size: 32px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; }';
-        html += '.header p { color: rgba(255,255,255,0.9); margin: 10px 0 0; font-size: 16px; }';
-        html += '.header .date { font-size: 14px; margin-top: 5px; opacity: 0.8; }';
-        html += 'table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }';
-        html += 'th { background: #2c3e50; color: white; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }';
-        html += 'td { padding: 12px; border-bottom: 1px solid #e9ecef; vertical-align: middle; }';
-        html += 'tr:nth-child(even) { background: #f8f9fa; }';
-        html += 'tr:hover { background: #e9ecef; }';
-        html += '.product-image { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #dee2e6; }';
-        html += '.qr-code { width: 50px; height: 50px; border: 1px solid #dee2e6; }';
-        html += '.status-disponible { background: #d4edda; color: #155724; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 11px; }';
-        html += '.status-faible { background: #fff3cd; color: #856404; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 11px; }';
-        html += '.status-épuisé { background: #f8d7da; color: #721c24; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 11px; }';
-        html += '.summary { margin-top: 40px; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; }';
-        html += '.summary h3 { margin: 0 0 25px; color: white; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; }';
-        html += '.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }';
-        html += '.summary-item { background: rgba(255,255,255,0.15); padding: 25px; border-radius: 10px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }';
-        html += '.summary-item strong { display: block; color: rgba(255,255,255,0.8); font-size: 13px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }';
-        html += '.summary-item span { font-size: 32px; font-weight: 700; color: white; }';
-        html += '.summary-item .unit { font-size: 14px; font-weight: 400; opacity: 0.8; }';
-        html += '.calculations { margin-top: 30px; padding: 25px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #667eea; }';
-        html += '.calculations h4 { margin: 0 0 20px; color: #2c3e50; font-size: 18px; }';
-        html += '.calc-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #dee2e6; }';
-        html += '.calc-row:last-child { border-bottom: none; }';
-        html += '.calc-label { font-weight: 500; color: #495057; }';
-        html += '.calc-value { font-weight: 700; color: #2c3e50; }';
-        html += '.calc-total { background: #667eea; color: white; padding: 15px; border-radius: 8px; font-weight: 700; font-size: 16px; margin-top: 15px; }';
-        html += '.footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #e9ecef; text-align: center; color: #6c757d; font-size: 12px; }';
-        html += '@media print { body { background: white; } .container { box-shadow: none; } .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .summary { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }';
-        html += '</style></head><body><div class="container">';
-        html += '<div class="header"><h1>📦 FICHE DE STOCK</h1><p>État complet des stocks et inventaire</p><div class="date">📅 ' + today + ' à ' + now + '</div></div>';
-        
-        html += '<table><thead><tr><th>Image</th><th>Produit</th><th>Référence</th><th>Code QR</th><th>Catégorie</th><th>Date Ajout</th><th>Prix Achat</th><th>Prix Vente</th><th>Quantité</th><th>Valeur Stock</th><th>Statut</th></tr></thead><tbody>';
-        
+
+        const entreprise = await chargerParamsEntreprise();
+
+        let corps = genererEnTeteEtat(entreprise, 'Fiche de stock', { reference: 'État complet des stocks et inventaire' });
+
+        corps += '<table class="etat-table"><thead><tr>';
+        corps += '<th>Produit</th><th>Référence</th><th>Catégorie</th><th>Date Ajout</th><th class="num">Prix Achat</th><th class="num">Prix Vente</th><th class="num">Quantité</th><th class="num">Valeur Stock</th><th>Statut</th>';
+        corps += '</tr></thead><tbody>';
+
         let totalValue = 0;
         products.forEach(product => {
             const status = getStockStatus(product.quantite, product.stock_min);
+            const statusClass = status === 'épuisé' ? 'epuise' : status;
             const dateAjout = product.created_at ? new Date(product.created_at).toLocaleDateString('fr-FR') : '-';
             const stockValue = product.prix_achat * product.quantite;
             totalValue += stockValue;
-            
-            html += '<tr>';
-            html += '<td>' + (product.image_url_1 ? '<img src="' + product.image_url_1 + '" class="product-image">' : '<div style="width: 60px; height: 60px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #adb5bd;">📦</div>') + '</td>';
-            html += '<td><strong>' + product.nom + '</strong><br><small style="color: #6c757d;">' + (product.fournisseur || '') + '</small></td>';
-            html += '<td style="font-family: monospace; background: #f8f9fa; padding: 8px; border-radius: 4px;">' + product.reference + '</td>';
-            html += '<td><img src="/api/qrcode?data=' + encodeURIComponent(product.reference) + '&size=100" alt="QR" class="qr-code" style="width: 50px; height: 50px; background: white; border-radius: 4px;"></td>';
-            html += '<td>' + (product.categorie || '-') + '</td>';
-            html += '<td>' + dateAjout + '</td>';
-            html += '<td>' + formatCurrency(product.prix_achat, product.devise) + '</td>';
-            html += '<td>' + formatCurrency(product.prix_vente, product.devise) + '</td>';
-            html += '<td style="font-weight: 700; font-size: 14px;">' + product.quantite + '</td>';
-            html += '<td style="font-weight: 700; color: #667eea;">' + formatCurrency(stockValue, product.devise) + '</td>';
-            html += '<td><span class="status-' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
-            html += '</tr>';
+
+            corps += '<tr>';
+            corps += '<td><strong>' + escHtmlEtats(product.nom) + '</strong>' + (product.fournisseur ? '<br><small style="color:#64748b;">' + escHtmlEtats(product.fournisseur) + '</small>' : '') + '</td>';
+            corps += '<td style="font-family:monospace;">' + escHtmlEtats(product.reference) + '</td>';
+            corps += '<td>' + escHtmlEtats(product.categorie || '-') + '</td>';
+            corps += '<td>' + dateAjout + '</td>';
+            corps += '<td class="num">' + formatCurrency(product.prix_achat, product.devise) + '</td>';
+            corps += '<td class="num">' + formatCurrency(product.prix_vente, product.devise) + '</td>';
+            corps += '<td class="num gras">' + product.quantite + '</td>';
+            corps += '<td class="num gras">' + formatCurrency(stockValue, product.devise) + '</td>';
+            corps += '<td><span class="etat-badge ' + statusClass + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
+            corps += '</tr>';
         });
-        
+
         const totalProducts = products.length;
         const totalQuantity = products.reduce((sum, p) => sum + p.quantite, 0);
         const lowStock = products.filter(p => p.quantite <= p.stock_min).length;
         const outOfStock = products.filter(p => p.quantite === 0).length;
         const availableStock = products.filter(p => p.quantite > p.stock_min).length;
-        const averagePrice = products.length > 0 ? totalValue / totalQuantity : 0;
-        
-        html += '</tbody></table>';
-        
-        html += '<div class="calculations"><h4>📊 CALCULS DÉTAILLÉS DU STOCK</h4>';
-        html += '<div class="calc-row"><span class="calc-label">Nombre total de produits</span><span class="calc-value">' + totalProducts + ' articles</span></div>';
-        html += '<div class="calc-row"><span class="calc-label">Quantité totale en stock</span><span class="calc-value">' + totalQuantity + ' unités</span></div>';
-        html += '<div class="calc-row"><span class="calc-label">Stock disponible</span><span class="calc-value">' + availableStock + ' articles</span></div>';
-        html += '<div class="calc-row"><span class="calc-label">Stock faible</span><span class="calc-value">' + lowStock + ' articles</span></div>';
-        html += '<div class="calc-row"><span class="calc-label">Stock épuisé</span><span class="calc-value">' + outOfStock + ' articles</span></div>';
-        html += '<div class="calc-row"><span class="calc-label">Prix moyen par unité</span><span class="calc-value">' + formatCurrency(averagePrice) + '</span></div>';
-        html += '<div class="calc-total">💰 VAUR TOTALE DU STOCK: ' + formatCurrency(totalValue) + '</div>';
-        html += '</div>';
-        
-        html += '<div class="summary"><h3>📈 RÉSUMÉ GÉNÉRAL</h3><div class="summary-grid">';
-        html += '<div class="summary-item"><strong>Total Produits</strong><span>' + totalProducts + '</span><span class="unit">articles</span></div>';
-        html += '<div class="summary-item"><strong>Quantité Totale</strong><span>' + totalQuantity + '</span><span class="unit">unités</span></div>';
-        html += '<div class="summary-item"><strong>Valeur Totale</strong><span>' + formatCurrency(totalValue) + '</span><span class="unit">stock</span></div>';
-        html += '<div class="summary-item"><strong>Alertes Stock</strong><span>' + (lowStock + outOfStock) + '</span><span class="unit">articles</span></div>';
-        html += '</div></div>';
-        
-        html += '<div class="footer"><p>Document généré automatiquement le ' + today + ' à ' + now + '</p><p>Système de Gestion de Stock © 2024</p></div>';
-        html += '</div><script>window.onload = function() { window.print(); };<\/script></body></html>';
-        
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(html);
-        printWindow.document.close();
-        
+        const averagePrice = (products.length > 0 && totalQuantity > 0) ? totalValue / totalQuantity : 0;
+
+        corps += '</tbody></table>';
+
+        corps += '<div class="etat-box"><h4>📊 Calculs détaillés du stock</h4>';
+        corps += '<div class="etat-row"><span>Nombre total de produits</span><span class="gras">' + totalProducts + ' articles</span></div>';
+        corps += '<div class="etat-row"><span>Quantité totale en stock</span><span class="gras">' + totalQuantity + ' unités</span></div>';
+        corps += '<div class="etat-row"><span>Stock disponible</span><span class="gras">' + availableStock + ' articles</span></div>';
+        corps += '<div class="etat-row"><span>Stock faible</span><span class="gras">' + lowStock + ' articles</span></div>';
+        corps += '<div class="etat-row"><span>Stock épuisé</span><span class="gras">' + outOfStock + ' articles</span></div>';
+        corps += '<div class="etat-row"><span>Prix moyen par unité</span><span class="gras">' + formatCurrency(averagePrice) + '</span></div>';
+        corps += '<div class="etat-total">Valeur totale du stock : ' + formatCurrency(totalValue) + '</div>';
+        corps += '</div>';
+
+        corps += '<div class="etat-box"><h4>📈 Résumé général</h4>';
+        corps += '<div class="etat-row"><span>Total Produits</span><span class="gras">' + totalProducts + ' articles</span></div>';
+        corps += '<div class="etat-row"><span>Quantité Totale</span><span class="gras">' + totalQuantity + ' unités</span></div>';
+        corps += '<div class="etat-row"><span>Valeur Totale</span><span class="gras">' + formatCurrency(totalValue) + '</span></div>';
+        corps += '<div class="etat-row"><span>Alertes Stock</span><span class="gras">' + (lowStock + outOfStock) + ' articles</span></div>';
+        corps += '</div>';
+
+        corps += '<div class="etat-footer">' + escHtmlEtats(entreprise.nom_entreprise || 'MotoStockIA') + ' — Fiche de stock — Système de Gestion de Stock</div>';
+
+        ouvrirDocumentImpression('Fiche de stock', corps, entreprise);
+
     } catch (error) {
         console.error('Erreur lors de l\'export:', error);
         alert('Erreur lors de la génération de la fiche de stock');

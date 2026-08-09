@@ -124,7 +124,7 @@
                 <option value="CDF" style="color: #0f172a;">FC</option>
                 <option value="USD" style="color: #0f172a;">$ USD</option>
             </select>
-            <button class="btn btn-light btn-sm" onclick="window.print()" style="border-radius: 10px; font-weight: 600; padding: 8px 14px;">
+            <button class="btn btn-light btn-sm" onclick="imprimerPageAvecEnTete('Statistiques de l\'application')" style="border-radius: 10px; font-weight: 600; padding: 8px 14px;">
                 <i class="bi bi-printer"></i> Imprimer
             </button>
         </div>
@@ -197,6 +197,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/etats_style.js') }}"></script>
 <script>
 let salesChartInstance = null;
 let stockChartInstance = null;

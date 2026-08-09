@@ -246,7 +246,7 @@
                 <option value="year" style="color: #0f172a;">Cette année</option>
                 <option value="all" style="color: #0f172a;">Toute la période</option>
             </select>
-            <button class="btn btn-light btn-sm" onclick="window.print()" style="border-radius: 10px; font-weight: 600; padding: 8px 14px;">
+            <button class="btn btn-light btn-sm" onclick="imprimerPageAvecEnTete('Rapport d\'activité')" style="border-radius: 10px; font-weight: 600; padding: 8px 14px;">
                 <i class="bi bi-printer"></i> Imprimer
             </button>
         </div>
@@ -919,6 +919,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/etats_style.js') }}"></script>
 <script>
 let activeReportTab = 'capital';
 let evolutionCurrency = 'CDF';
