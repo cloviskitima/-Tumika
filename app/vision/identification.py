@@ -179,8 +179,12 @@ def _classer(candidats, index_id):
     return resultat
 
 
-def analyser_image(data: bytes, signaler_progres=None):
-    """Analyse une image et identifie le produit (algorithme combiné complet)."""
+def analyser_image(data: bytes, signaler_progres=None, rapide=False):
+    """Analyse une image et identifie le produit (algorithme combiné complet).
+
+    `rapide=True` saute la détection d'objets YOLO (étape la plus lente) pour
+    accélérer le scan continu en caméra.
+    """
     index_id, index_ref, produits = _indices_produits()
 
     # 1. Code-barres / QR
@@ -223,7 +227,9 @@ def analyser_image(data: bytes, signaler_progres=None):
             candidats = _fusionner(candidats, candidats_visuels)
 
     # 4. YOLO (signal informatif + éventuel boost historique par label)
-    objets_yolo = detection.detecter_objets(data)
+    objets_yolo = []
+    if not rapide:
+        objets_yolo = detection.detecter_objets(data)
     labels = [o['label'] for o in objets_yolo]
     if labels:
         cles_yolo = ['yolo:' + l.lower() for l in labels]

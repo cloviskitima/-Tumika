@@ -3729,7 +3729,8 @@ def identification_analyse():
         if statut == 'trop_large':
             return jsonify({'success': False, 'message': 'Image trop volumineuse (max 16 Mo)'}), 413
         if image_bytes:
-            return jsonify(analyser_image(image_bytes))
+            rapide = request.args.get('rapide') in ('1', 'true', 'True', 'oui')
+            return jsonify(analyser_image(image_bytes, rapide=rapide))
 
         return jsonify({'success': False, 'message': 'Fournissez une image, un texte ou un code.'}), 400
 

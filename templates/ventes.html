@@ -284,7 +284,7 @@
                 <div id="visionScannerPanel" style="display: none; margin-bottom: 16px; border: 1px solid var(--gray-200); border-radius: 14px; overflow: hidden; background: #ffffff;">
                     <div style="padding: 12px 16px; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
                         <div style="font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
-                            <i class="bi bi-camera-video-fill"></i> Scanner Intelligent — Vision / OCR / Code-barres
+                            <i class="bi bi-camera-video-fill"></i> Scanner Intelligent — Scan continu (Code-barres / Image / Texte)
                         </div>
                         <button onclick="toggleVisionScanner()" style="background: rgba(255,255,255,0.15); border: none; color: white; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 15px;">×</button>
                     </div>
@@ -295,7 +295,7 @@
                             <video id="visionVideo" style="width: 100%; height: 100%; object-fit: cover;" autoplay playsinline muted></video>
                             <div id="visionCameraHint" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; text-align: center; padding: 20px;">
                                 <i class="bi bi-camera" style="font-size: 2rem; margin-bottom: 8px;"></i>
-                                <div style="font-size: 0.82rem;">Caméra inactive — cliquez sur « Activer la caméra » puis capturez le code / l'étiquette du produit</div>
+                                <div style="font-size: 0.82rem;">Caméra inactive — cliquez sur « Activer la caméra ». Le scan continu identifiera automatiquement les codes-barres, les QR, les étiquettes (texte) et les produits sur la caméra.</div>
                             </div>
                             <div id="visionAutoHint" style="display: none; position: absolute; top: 10px; left: 10px; right: 10px; background: rgba(6,78,59,0.85); color: #d1fae5; font-size: 0.72rem; font-weight: 700; padding: 6px 10px; border-radius: 8px; text-align: center;"></div>
                             <button id="visionCaptureBtn" onclick="captureVision()" style="display: none; position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: rgba(16,185,129,0.95); border: none; color: white; padding: 9px 20px; border-radius: 30px; font-weight: 800; font-size: 0.85rem; cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,0.4);">
@@ -327,6 +327,15 @@
                         <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-bottom: 12px;">
                             <input type="text" id="visionTextInput" class="form-control" placeholder="Ou saisissez un code-barres / une référence..." style="border-radius: 10px;" onkeydown="if(event.key==='Enter'){identifierVisionTexte();}">
                             <button class="btn btn-primary" onclick="identifierVisionTexte()" style="border-radius: 10px; font-weight: 700;"><i class="bi bi-upc-scan me-1"></i> Identifier</button>
+                        </div>
+
+                        <!-- Ajout automatique + statut du scan continu -->
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 600; color: #555; cursor: pointer;">
+                                <input type="checkbox" id="visionAutoAddCheck" style="width: 15px; height: 15px; cursor: pointer;" onchange="visionAutoAdd=this.checked">
+                                Ajout automatique au panier (code certain)
+                            </label>
+                            <span id="visionScanStatus" style="font-size: 0.75rem; color: #64748b; font-weight: 700;"></span>
                         </div>
 
                         <!-- Résultat de l'identification -->
@@ -517,6 +526,20 @@ let visionScanning = false;
 let lastVisionCode = null;
 let lastVisionCodeTime = 0;
 let visionResultCode = null;
+let visionAnalysisBusy = false;
+let visionLastAnalysisAt = 0;
+let visionFrameCanvas = null;
+let visionPrevPixels = null;
+let visionShownKey = null;
+let visionAutoAdd = false;
+let visionLastAddedKey = null;
+let visionLastAddedTime = 0;
+let visionBarcodeAt = 0;
+const VISION_LOOP_MS = 120;
+const VISION_ANALYSE_MIN_GAP = 500;
+const VISION_ANALYSE_RESEND = 1500;
+const VISION_FRAME_DELTA = 16;
+const VISION_FRAME_MAX = 640;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadSales();
@@ -1363,23 +1386,11 @@ async function startVisionCamera() {
         captureBtn.style.display = 'block';
         btn.innerHTML = '<i class="bi bi-camera-video-off me-1"></i> Arrêter la caméra';
 
-        // Détection automatique continue des codes-barres / QR (si supportée)
+        // Scan continu : code-barres/QR (navigateur) + image/OCR/vision (serveur)
         if (!visionDetector) {
             visionDetector = await initVisionDetector();
         }
-        const autoHint = document.getElementById('visionAutoHint');
-        if (visionDetector) {
-            if (autoHint) {
-                autoHint.style.display = 'block';
-                autoHint.innerHTML = '<i class="bi bi-qr-code-scan"></i> Détection automatique active : pointez le code-barres / QR du produit';
-            }
-            startVisionScanLoop();
-        } else {
-            if (autoHint) {
-                autoHint.style.display = 'block';
-                autoHint.innerHTML = '<i class="bi bi-lightbulb"></i> Détection auto indisponible — utilisez « Capturer & Identifier »';
-            }
-        }
+        startVisionScanLoop();
     } catch (err) {
         if (typeof showToast === 'function') showToast(window.cameraErrorMessage(err), 'warning', 6000);
         hint.style.display = 'flex';
@@ -1417,6 +1428,15 @@ function stopVisionCamera() {
     if (btn) btn.innerHTML = '<i class="bi bi-camera-video me-1"></i> Activer la caméra';
     const autoHint = document.getElementById('visionAutoHint');
     if (autoHint) autoHint.style.display = 'none';
+    visionAnalysisBusy = false;
+    visionPrevPixels = null;
+    visionShownKey = null;
+    visionLastAddedKey = null;
+    visionLastAddedTime = 0;
+    visionBarcodeAt = 0;
+    setVisionScanStatus('');
+    lastVisionResult = null;
+    visionResultCode = null;
     lastVisionCode = null;
     lastVisionCodeTime = 0;
 }
@@ -1433,9 +1453,15 @@ async function initVisionDetector() {
     }
 }
 
+// ===== Scan continu : code-barres (navigateur) + image/OCR/vision (serveur) =====
 function startVisionScanLoop() {
-    if (visionScanTimer || !visionDetector || visionScanning) return;
+    if (visionScanTimer || visionScanning) return;
     visionScanning = true;
+    const autoHint = document.getElementById('visionAutoHint');
+    if (autoHint) {
+        autoHint.style.display = 'block';
+        autoHint.innerHTML = '<i class="bi bi-view-list"></i> Scan continu actif : pointez le code-barres, le QR, l\'étiquette ou le produit — la caméra identifie toute seule';
+    }
     const step = async () => {
         if (!visionScanning) return;
         if (!visionStream) {
@@ -1444,19 +1470,10 @@ function startVisionScanLoop() {
         }
         const video = document.getElementById('visionVideo');
         if (video && video.videoWidth) {
-            try {
-                const codes = await visionDetector.detect(video);
-                if (codes && codes.length) {
-                    const value = (codes[0].rawValue || '').trim();
-                    if (value && (value !== lastVisionCode || (Date.now() - lastVisionCodeTime) > 2500)) {
-                        lastVisionCode = value;
-                        lastVisionCodeTime = Date.now();
-                        handleVisionBarcode(value);
-                    }
-                }
-            } catch (e) { /* erreur de détection ignorée (mode manuel) */ }
+            await stepVisionBarcode(video);
+            stepVisionImage(video);
         }
-        if (visionScanning) visionScanTimer = setTimeout(step, 400);
+        if (visionScanning) visionScanTimer = setTimeout(step, VISION_LOOP_MS);
     };
     step();
 }
@@ -1467,14 +1484,128 @@ function stopVisionScanLoop() {
         clearTimeout(visionScanTimer);
         visionScanTimer = null;
     }
+    visionAnalysisBusy = false;
+    setVisionScanStatus('');
+}
+
+async function stepVisionBarcode(video) {
+    if (!visionDetector) return;
+    try {
+        const codes = await visionDetector.detect(video);
+        if (!codes || !codes.length) return;
+        const value = (codes[0].rawValue || '').trim();
+        if (!value) return;
+        const now = Date.now();
+        if (value === lastVisionCode && (now - lastVisionCodeTime) < 2500) return;
+        lastVisionCode = value;
+        lastVisionCodeTime = now;
+        visionBarcodeAt = now;
+        handleVisionBarcode(value);
+    } catch (e) { /* détection indisponible : le mode image continue de tourner */ }
+}
+
+function stepVisionImage(video) {
+    const now = Date.now();
+    if (visionAnalysisBusy) return;
+    if (now - visionLastAnalysisAt < VISION_ANALYSE_MIN_GAP) return;
+    // Un code vient d'être détecté : sa réponse rapide est déjà en cours d'affichage
+    if (now - visionBarcodeAt < 1200) return;
+    const changed = visionFrameDiff(video) > VISION_FRAME_DELTA;
+    const resend = (now - visionLastAnalysisAt >= VISION_ANALYSE_RESEND);
+    if (changed || resend) visionEnvoyerTrame(video);
+}
+
+function visionFrameDiff(video) {
+    const w = 48, h = 32;
+    if (!visionFrameCanvas) {
+        visionFrameCanvas = document.createElement('canvas');
+        visionFrameCanvas.width = w;
+        visionFrameCanvas.height = h;
+    }
+    const ctx = visionFrameCanvas.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(video, 0, 0, w, h);
+    const d = ctx.getImageData(0, 0, w, h).data;
+    const pix = new Float32Array(w * h);
+    for (let i = 0, j = 0; i < d.length; i += 4, j++) {
+        pix[j] = d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114;
+    }
+    let diff = 0;
+    if (visionPrevPixels && visionPrevPixels.length === pix.length) {
+        for (let k = 0; k < pix.length; k++) diff += Math.abs(pix[k] - visionPrevPixels[k]);
+        diff /= (w * h);
+    }
+    visionPrevPixels = pix;
+    return diff;
+}
+
+async function visionEnvoyerTrame(video) {
+    if (visionAnalysisBusy) return;
+    visionAnalysisBusy = true;
+    visionLastAnalysisAt = Date.now();
+    setVisionScanStatus('Analyse image / OCR…');
+    try {
+        const c = document.createElement('canvas');
+        const scale = Math.min(1, VISION_FRAME_MAX / Math.max(video.videoWidth, video.videoHeight));
+        c.width = Math.max(1, Math.round(video.videoWidth * scale));
+        c.height = Math.max(1, Math.round(video.videoHeight * scale));
+        c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
+        const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.72));
+        if (!blob) return;
+        const form = new FormData();
+        form.append('image', blob, 'scan.jpg');
+        const response = await fetch('/api/identification/analyse?rapide=1', { method: 'POST', body: form });
+        const data = await response.json();
+        if (response.ok) handleVisionResult(data);
+    } catch (e) {
+        console.error(e);
+    } finally {
+        visionAnalysisBusy = false;
+        if (visionScanning) setVisionScanStatus('');
+    }
+}
+
+function handleVisionResult(data) {
+    if (!data) return;
+    const alts = data.alternatives || [];
+    const container = document.getElementById('visionResult');
+    if (data.determination === 'aucun' || !alts.length) {
+        // Rien identifié : on ne touche pas à un résultat en cours, on signale simplement l'état
+        if (lastVisionResult === null) {
+            container.innerHTML = '<div style="text-align:center;padding:10px;color:var(--gray-500);font-size:0.8rem;"><i class="bi bi-hourglass-split me-1"></i> Aucun produit sur la caméra — montrez un code-barres, un QR, une étiquette ou un produit...</div>';
+        }
+        return;
+    }
+    const top = alts[0];
+    if (!top || !top.produit) return;
+    const key = top.produit.id + '|' + Math.round((top.confiance || 0) * 10) + '|' + (top.methode || '');
+    if (key === visionShownKey) {
+        lastVisionResult = data;
+        return;
+    }
+    if (key === visionLastAddedKey && (Date.now() - visionLastAddedTime) < 2200) return;
+    visionShownKey = key;
+    // Ajout automatique (optionnel) : uniquement si le code est certain
+    if (visionAutoAdd && data.determination === 'certain' && (top.methode === 'code-barres' || top.methode === 'QR') && (top.confiance || 0) >= 0.9) {
+        visionResultCode = key;
+        lastVisionResult = data;
+        addVisionToCart(0);
+        return;
+    }
+    renderVisionResult(container, data);
+}
+
+function setVisionScanStatus(txt) {
+    const el = document.getElementById('visionScanStatus');
+    if (el) el.textContent = txt;
 }
 
 function handleVisionBarcode(value) {
-    if (visionResultCode === value) return;
-    visionResultCode = value;
+    const cle = 'CB:' + value;
+    if (visionResultCode === cle) return;
+    visionResultCode = cle;
     const container = document.getElementById('visionResult');
-    container.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gray-500);font-size:0.85rem;"><div class="spinner-border spinner-border-sm text-primary"></div> Code détecté : <strong>' + escapeHtml(value) + '</strong> — identification en cours...</div>';
-    identifierVisionTexte(value, true);
+    container.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gray-500);font-size:0.85rem;"><div class="spinner-border spinner-border-sm text-primary"></div> Code détecté : <strong>' + escapeHtml(value) + '</strong> — identification...</div>';
+    identifierVisionTexte(value, false);
 }
 
 async function captureVision() {
@@ -1575,6 +1706,11 @@ function renderVisionResult(container, data) {
         return;
     }
 
+    const top = alternates[0];
+    if (top && top.produit) {
+        visionShownKey = top.produit.id + '|' + Math.round((top.confiance || 0) * 10) + '|' + (top.methode || '');
+    }
+
     const det = data.determination;
     const badgeStyle = det === 'certain' ? 'background:#d1fae5;color:#065f46;' : (det === 'probable' ? 'background:#fef3c7;color:#92400e;' : 'background:#fee2e2;color:#991b1b;');
     const detLabel = det === 'certain' ? 'Certain' : (det === 'probable' ? 'Probable' : 'Incertain');
@@ -1652,11 +1788,12 @@ async function addVisionToCart(index) {
     await addToCart(p.id);
     if (typeof showToast === 'function') showToast(`${p.nom} ajouté au panier`, 'success', 2500);
 
-    // Scan continu : on garde la caméra ouverte, on prépare le prochain scan
+    // Scan continu : la caméra reste ouverte, on prépare le prochain scan
+    visionLastAddedKey = visionShownKey || (p.id + '|*');
+    visionLastAddedTime = Date.now();
     lastVisionResult = null;
     visionResultCode = null;
-    lastVisionCode = null;
-    lastVisionCodeTime = 0;
+    visionShownKey = null;
     const container = document.getElementById('visionResult');
     container.innerHTML = '<div style="text-align:center;padding:14px;color:#059669;font-size:0.85rem;font-weight:700;"><i class="bi bi-check-circle-fill"></i> ✓ ' + escapeHtml(p.nom) + ' ajouté au panier — scannez le produit suivant</div>';
     setTimeout(() => {
