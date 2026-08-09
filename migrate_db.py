@@ -40,6 +40,20 @@ def migrate_produit_table():
             cursor.execute("ALTER TABLE produit ADD COLUMN stock_min INTEGER DEFAULT 5")
         else:
             print("La colonne stock_min existe déjà")
+
+        # Ajouter est_perissable si elle n'existe pas
+        if 'est_perissable' not in columns:
+            print("Ajout de la colonne est_perissable...")
+            cursor.execute("ALTER TABLE produit ADD COLUMN est_perissable BOOLEAN DEFAULT 0")
+        else:
+            print("La colonne est_perissable existe déjà")
+
+        # Ajouter date_expiration si elle n'existe pas
+        if 'date_expiration' not in columns:
+            print("Ajout de la colonne date_expiration...")
+            cursor.execute("ALTER TABLE produit ADD COLUMN date_expiration DATE")
+        else:
+            print("La colonne date_expiration existe déjà")
         
         conn.commit()
         conn.close()

@@ -73,6 +73,9 @@
 <!-- Stock Alerts -->
 <div id="stockAlerts" style="display: none; margin-bottom: 20px;"></div>
 
+<!-- Expiration Alerts -->
+<div id="expirationAlerts" style="display: none; margin-bottom: 20px;"></div>
+
 <!-- Filters and Actions -->
 <div class="card mb-4">
     <div class="card-body">
@@ -127,6 +130,7 @@
                         <th>Prix Achat</th>
                         <th>Prix Vente</th>
                         <th>Quantité</th>
+                        <th>Expiration</th>
                         <th>Date Ajout</th>
                         <th>Statut</th>
                         <th>Actions</th>
@@ -134,7 +138,7 @@
                 </thead>
                 <tbody id="productsTableBody">
                     <tr>
-                        <td colspan="11" style="text-align: center; color: var(--gray-500); padding: 40px;">
+                        <td colspan="12" style="text-align: center; color: var(--gray-500); padding: 40px;">
                             <i class="bi bi-box-seam" style="font-size: 2rem; margin-bottom: 16px;"></i>
                             <p>Aucun produit en stock</p>
                         </td>
@@ -235,6 +239,16 @@
                 <div>
                     <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--gray-700);">Stock minimum</label>
                     <input type="number" id="productMinStock" class="form-control" min="0" value="5" placeholder="5">
+                </div>
+                
+                <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; background: var(--gray-100); border-radius: 12px; padding: 14px 16px;">
+                    <input type="checkbox" id="productPerishable" onchange="toggleExpirationField()" style="width: 20px; height: 20px; cursor: pointer;">
+                    <label for="productPerishable" style="font-weight: 500; color: var(--gray-700); margin: 0; cursor: pointer;">Produit périssable (date d'expiration)</label>
+                </div>
+                
+                <div id="expirationField" style="display: none; grid-column: 1 / -1;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--gray-700);">Date d'expiration *</label>
+                    <input type="date" id="productExpiration" class="form-control" required>
                 </div>
                 
                 <div style="grid-column: 1 / -1;">
@@ -998,6 +1012,39 @@ async function loadStockStatistics() {
                 localStorage.setItem('resolvedAlerts', JSON.stringify([]));
             }
         }
+
+        // Afficher les alertes d'expiration
+        const expirationContainer = document.getElementById('expirationAlerts');
+        if (expirationContainer) {
+            const activeExpirations = (data.alertes_expiration || []).filter(a => !(JSON.parse(localStorage.getItem('resolvedExpirations') || '[]')).includes(a.id));
+            if (activeExpirations.length > 0) {
+                expirationContainer.innerHTML = activeExpirations.map(alert => {
+                    const isExpired = alert.statut === 'expire';
+                    const bg = isExpired ? '#fee2e2' : '#fef3c7';
+                    const border = isExpired ? '#ef4444' : '#f59e0b';
+                    const icon = isExpired ? '⚠️ Expiré' : '⏳ Expire bientôt';
+                    return `
+                        <div id="alert-${alert.id}" style="background: ${bg}; border-left: 4px solid ${border}; padding: 12px; margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 500;">${icon} — ${alert.nom}</div>
+                                <div style="font-size: 0.85rem; color: var(--gray-600);">Réf: ${alert.reference} | Expire le: ${formatDateFr(alert.date_expiration)} | Stock: ${alert.quantite}</div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="markExpirationAlertAsRead('${alert.id}')" class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" title="Marquer comme lu">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                                <button onclick="deleteExpirationAlert('${alert.id}')" class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;" title="Supprimer">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                expirationContainer.style.display = 'block';
+            } else {
+                expirationContainer.style.display = 'none';
+            }
+        }
     } catch (error) {
         console.error('Erreur lors du chargement des statistiques:', error);
     }
@@ -1086,6 +1133,34 @@ function deleteAlert(alertId) {
     }
 }
 
+function markExpirationAlertAsRead(alertId) {
+    let resolved = JSON.parse(localStorage.getItem('resolvedExpirations') || '[]');
+    if (!resolved.includes(alertId)) {
+        resolved.push(alertId);
+        localStorage.setItem('resolvedExpirations', JSON.stringify(resolved));
+    }
+    const alertElement = document.getElementById(`alert-${alertId}`);
+    if (alertElement) {
+        alertElement.style.opacity = '0.5';
+        alertElement.style.background = '#f3f4f6';
+    }
+}
+
+function deleteExpirationAlert(alertId) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette alerte ?')) return;
+    let resolved = JSON.parse(localStorage.getItem('resolvedExpirations') || '[]');
+    resolved = resolved.filter(id => id !== alertId);
+    localStorage.setItem('resolvedExpirations', JSON.stringify(resolved));
+    const alertElement = document.getElementById(`alert-${alertId}`);
+    if (alertElement) {
+        alertElement.remove();
+    }
+    const container = document.getElementById('expirationAlerts');
+    if (container && container.children.length === 0) {
+        container.style.display = 'none';
+    }
+}
+
 async function loadProducts() {
     console.log('Chargement des produits...');
     try {
@@ -1121,7 +1196,7 @@ function renderProductsTable(products) {
     const tbody = document.getElementById('productsTableBody');
     
     if (products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--gray-500); padding: 40px;"><i class="bi bi-box-seam" style="font-size: 2rem; margin-bottom: 16px;"></i><p>Aucun produit en stock</p></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--gray-500); padding: 40px;"><i class="bi bi-box-seam" style="font-size: 2rem; margin-bottom: 16px;"></i><p>Aucun produit en stock</p></td></tr>';
         return;
     }
     
@@ -1145,6 +1220,7 @@ function renderProductsTable(products) {
             '<td>' + formatCurrency(product.prix_achat, product.devise) + '</td>' +
             '<td>' + formatCurrency(product.prix_vente, product.devise) + '</td>' +
             '<td>' + product.quantite + '</td>' +
+            '<td>' + renderExpirationCell(product) + '</td>' +
             '<td style="font-size: 12px; color: var(--gray-600);">' + dateAjout + '</td>' +
             '<td><span style="' + getStockStatusStyle(status) + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>' +
             '<td>' +
@@ -1170,6 +1246,30 @@ function getStockStatusStyle(status) {
         default:
             return 'background: var(--gray-200); color: var(--gray-700);';
     }
+}
+
+function renderExpirationCell(product) {
+    if (!product.est_perissable) return '-';
+    if (!product.date_expiration) return '<span style="color: var(--gray-500);">Non définie</span>';
+    return '<span style="' + getExpirationStyle(product.date_expiration) + '">' + formatDateFr(product.date_expiration) + '</span>';
+}
+
+function getExpirationStyle(dateStr) {
+    const dateExp = new Date(dateStr + 'T00:00:00');
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const seuil = new Date(today);
+    seuil.setDate(seuil.getDate() + 30);
+    if (dateExp < today) return 'background: #fee2e2; color: #991b1b; font-weight: 500; padding: 2px 8px; border-radius: 4px;';
+    if (dateExp <= seuil) return 'background: #fef3c7; color: #92400e; font-weight: 500; padding: 2px 8px; border-radius: 4px;';
+    return 'padding: 2px 8px; border-radius: 4px;';
+}
+
+function formatDateFr(dateStr) {
+    if (!dateStr) return '-';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) return parts[2] + '/' + parts[1] + '/' + parts[0];
+    return dateStr;
 }
 
 function formatCurrency(amount, currency = 'XAF') {
@@ -1442,6 +1542,9 @@ function openProductModal(productId = null) {
         // Réinitialiser le formulaire seulement pour un nouveau produit
         document.getElementById('productForm').reset();
         document.getElementById('productId').value = '';
+        document.getElementById('productPerishable').checked = false;
+        document.getElementById('productExpiration').value = '';
+        document.getElementById('expirationField').style.display = 'none';
         
         // Réinitialiser les prévisualisations d'images
         document.getElementById('image1Preview').innerHTML = `
@@ -1481,6 +1584,14 @@ function closeProductModal() {
     document.body.style.overflow = '';
 }
 
+function toggleExpirationField() {
+    const checked = document.getElementById('productPerishable').checked;
+    document.getElementById('expirationField').style.display = checked ? 'block' : 'none';
+    const input = document.getElementById('productExpiration');
+    if (!checked) input.value = '';
+    input.required = checked;
+}
+
 async function saveProduct() {
     const productId = document.getElementById('productId').value;
     const isEdit = productId !== '';
@@ -1498,6 +1609,8 @@ async function saveProduct() {
     formData.append('prix_vente', document.getElementById('productSalePrice').value);
     formData.append('quantite', document.getElementById('productQuantity').value);
     formData.append('stock_min', document.getElementById('productMinStock').value);
+    formData.append('est_perissable', document.getElementById('productPerishable').checked ? '1' : '0');
+    formData.append('date_expiration', document.getElementById('productExpiration').value || '');
     formData.append('compatibilites', document.getElementById('productCompatibilities').value);
     
     // Gérer les images : priorité à l'upload, sinon capture webcam
@@ -1541,11 +1654,7 @@ async function saveProduct() {
             loadProducts();
             loadStockStatistics();
             
-            if (result.existant) {
-                alert('⚠️ Produit existant mis à jour !\n\nUn produit avec les mêmes détails existait déjà. La quantité a été ajoutée au stock existant.');
-            } else {
-                alert('Produit enregistré avec succès');
-            }
+            alert(result.message || (result.existant ? 'Produit existant mis à jour !' : 'Produit enregistré avec succès'));
         } else {
             alert(result.message || 'Erreur lors de la sauvegarde');
         }
@@ -1700,6 +1809,10 @@ async function editProduct(productId, viewOnly = false) {
             document.getElementById('productSalePrice').value = product.prix_vente;
             document.getElementById('productQuantity').value = product.quantite;
             document.getElementById('productMinStock').value = product.stock_min;
+            document.getElementById('productPerishable').checked = !!product.est_perissable;
+            document.getElementById('productExpiration').value = product.date_expiration || '';
+            document.getElementById('productExpiration').required = !!product.est_perissable;
+            toggleExpirationField();
             document.getElementById('productCompatibilities').value = product.compatibilites || '';
             
             // Réinitialiser les prévisualisations d'images avant d'afficher les nouvelles

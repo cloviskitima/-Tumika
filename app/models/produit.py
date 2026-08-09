@@ -22,6 +22,8 @@ class Produit(db.Model):
     prix_vente = db.Column(db.Float, nullable=False)
     quantite = db.Column(db.Integer, default=0)
     stock_min = db.Column(db.Integer, default=5)
+    est_perissable = db.Column(db.Boolean, default=False)
+    date_expiration = db.Column(db.Date)
     image_url_1 = db.Column(db.String(512))
     image_url_2 = db.Column(db.String(512))
     compatibilites = db.Column(db.Text)
@@ -74,6 +76,8 @@ class Produit(db.Model):
             'prix_vente': self.prix_vente,
             'quantite': self.quantite,
             'stock_min': self.stock_min,
+            'est_perissable': self.est_perissable,
+            'date_expiration': self.date_expiration.isoformat() if self.date_expiration else None,
             'image_url_1': self.image_url_1,
             'image_url_2': self.image_url_2,
             'compatibilites': self.compatibilites,

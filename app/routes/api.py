@@ -226,19 +226,25 @@ def create_produit():
     try:
         data = request.form
         
-        # Vérifier si un produit avec les mêmes détails existe déjà
+        # Vérifier si un produit avec le même nom et la même catégorie existe déjà
         nom = data.get('nom')
         categorie = data.get('categorie')
         fournisseur = data.get('fournisseur')
         prix_achat = float(data.get('prix_achat', 0))
         prix_vente = float(data.get('prix_vente', 0))
         
+        est_perissable = data.get('est_perissable') in ('1', 'true', 'True', 'on', 'oui', 'yes')
+        date_expiration = None
+        raw_expiration = data.get('date_expiration')
+        if raw_expiration:
+            try:
+                date_expiration = datetime.strptime(str(raw_expiration), '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                date_expiration = None
+        
         produit_existant = Produit.query.filter(
             Produit.nom == nom,
-            Produit.categorie == categorie,
-            Produit.fournisseur == fournisseur,
-            Produit.prix_achat == prix_achat,
-            Produit.prix_vente == prix_vente
+            Produit.categorie == categorie
         ).first()
         
         if produit_existant:
@@ -251,6 +257,12 @@ def create_produit():
                     produit_existant.id, 'reapprovisionnement', qty_avant, produit_existant.quantite,
                     f"Produit existant : ajout de +{quantite_additionnelle} unités en stock"
                 )
+
+            # Mettre à jour la périssabilité et la date d'expiration si fournies
+            if data.get('est_perissable') is not None:
+                produit_existant.est_perissable = est_perissable
+            if raw_expiration:
+                produit_existant.date_expiration = date_expiration
 
             # Mettre à jour les images si de nouvelles sont fournies
             upload_folder = current_app.config['UPLOAD_FOLDER']
@@ -280,9 +292,11 @@ def create_produit():
 
             return jsonify({
                 'success': True,
-                'message': 'Produit existant mis à jour avec succès',
+                'message': f"Un produit du même nom existe déjà dans la catégorie « {categorie or 'Non classé'} » : le stock est passé de {qty_avant} à {produit_existant.quantite} unités.",
                 'produit': produit_existant.to_dict(),
-                'existant': True
+                'existant': True,
+                'ancienne_quantite': qty_avant,
+                'nouvelle_quantite': produit_existant.quantite
             }), 200
 
         # Créer un nouveau produit
@@ -298,6 +312,8 @@ def create_produit():
             devise=data.get('devise', 'XAF'),
             quantite=int(data.get('quantite', 0)),
             stock_min=int(data.get('stock_min', 5)),
+            est_perissable=est_perissable,
+            date_expiration=date_expiration,
             compatibilites=data.get('compatibilites')
         )
         
@@ -361,6 +377,18 @@ def update_produit(id):
         produit.quantite = int(data.get('quantite', produit.quantite))
         produit.stock_min = int(data.get('stock_min', produit.stock_min))
         produit.compatibilites = data.get('compatibilites', produit.compatibilites)
+        
+        # Périssabilité et date d'expiration
+        if data.get('est_perissable') is not None:
+            produit.est_perissable = data.get('est_perissable') in ('1', 'true', 'True', 'on', 'oui', 'yes')
+        raw_expiration = data.get('date_expiration')
+        if raw_expiration:
+            try:
+                produit.date_expiration = datetime.strptime(str(raw_expiration), '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                produit.date_expiration = None
+        else:
+            produit.date_expiration = None
         
         # Gestion des images
         upload_folder = current_app.config['UPLOAD_FOLDER']
@@ -2402,6 +2430,29 @@ def get_stock_statistics():
             for p in produits if p.quantite <= p.stock_min
         ]
 
+        today = date.today()
+        seuil_expiration = today + timedelta(days=30)
+        alertes_expiration = []
+        for p in produits:
+            if not p.est_perissable or not p.date_expiration:
+                continue
+            if p.date_expiration < today:
+                statut = 'expire'
+            elif p.date_expiration <= seuil_expiration:
+                statut = 'proche'
+            else:
+                continue
+            alertes_expiration.append({
+                'id': f'expiration-{p.id}',
+                'nom': p.nom,
+                'reference': p.reference,
+                'quantite': p.quantite,
+                'date_expiration': p.date_expiration.isoformat(),
+                'devise': normalize_devise(p.devise),
+                'categorie': p.categorie,
+                'statut': statut
+            })
+
         user_id = session.get('user_id')
         if user_id:
             for p in produits:
@@ -2420,6 +2471,23 @@ def get_stock_statistics():
                             type='warning'
                         )
 
+            # Notifications pour produits expirés
+            for p in produits:
+                if not p.est_perissable or not p.date_expiration or p.date_expiration >= today:
+                    continue
+                notification_existante = Notification.query.filter_by(
+                    user_id=user_id,
+                    type='expiration',
+                    read=False
+                ).filter(Notification.message.like(f'%{p.nom}%')).first()
+                if not notification_existante:
+                    Notification.create_notification(
+                        user_id=user_id,
+                        title=f'Produit expiré: {p.nom}',
+                        message=f'Le produit {p.nom} (Réf: {p.reference}) a expiré le {p.date_expiration.strftime("%d/%m/%Y")}. Veuillez le retirer du stock.',
+                        type='danger'
+                    )
+
         return jsonify({
             'success': True,
             'total_produits': total_produits,
@@ -2434,6 +2502,7 @@ def get_stock_statistics():
             'valeur_par_categorie': valeur_par_categorie,
             'produits_par_categorie': produits_par_categorie,
             'alertes_stock': alertes_stock,
+            'alertes_expiration': alertes_expiration,
             'taux_change': rate
         })
     except Exception as e:
