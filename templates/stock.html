@@ -130,6 +130,8 @@
                         <th>Prix Achat</th>
                         <th>Prix Vente</th>
                         <th>Quantité</th>
+                        <th>Total Achat</th>
+                        <th>Total Vente</th>
                         <th>Expiration</th>
                         <th>Date Ajout</th>
                         <th>Statut</th>
@@ -138,7 +140,7 @@
                 </thead>
                 <tbody id="productsTableBody">
                     <tr>
-                        <td colspan="12" style="text-align: center; color: var(--gray-500); padding: 40px;">
+                        <td colspan="14" style="text-align: center; color: var(--gray-500); padding: 40px;">
                             <i class="bi bi-box-seam" style="font-size: 2rem; margin-bottom: 16px;"></i>
                             <p>Aucun produit en stock</p>
                         </td>
@@ -1196,7 +1198,7 @@ function renderProductsTable(products) {
     const tbody = document.getElementById('productsTableBody');
     
     if (products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--gray-500); padding: 40px;"><i class="bi bi-box-seam" style="font-size: 2rem; margin-bottom: 16px;"></i><p>Aucun produit en stock</p></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; color: var(--gray-500); padding: 40px;"><i class="bi bi-box-seam" style="font-size: 2rem; margin-bottom: 16px;"></i><p>Aucun produit en stock</p></td></tr>';
         return;
     }
     
@@ -1211,15 +1213,17 @@ function renderProductsTable(products) {
                 '</div>' +
             '</td>' +
             '<td>' +
-                '<div style="font-weight: 500;">' + product.nom + '</div>' +
-                '<div style="font-size: 12px; color: var(--gray-500);">' + (product.fournisseur || '') + '</div>' +
+                truncateCell(product.nom, 180, 'font-weight: 500;') +
+                '<div style="font-size: 12px; color: var(--gray-500);">' + truncateCell(product.fournisseur || '', 180) + '</div>' +
             '</td>' +
-            '<td style="font-family: \'Courier New\', monospace; font-size: 12px;">' + product.reference + '</td>' +
-            '<td style="font-family: \'Courier New\', monospace; font-size: 12px;">' + product.code_barres + '</td>' +
-            '<td>' + (product.categorie || '-') + '</td>' +
+            '<td>' + truncateCell(product.reference, 130, "font-family: 'Courier New', monospace; font-size: 12px;") + '</td>' +
+            '<td>' + truncateCell(product.code_barres, 130, "font-family: 'Courier New', monospace; font-size: 12px;") + '</td>' +
+            '<td>' + truncateCell(product.categorie || '-', 120) + '</td>' +
             '<td>' + formatCurrency(product.prix_achat, product.devise) + '</td>' +
             '<td>' + formatCurrency(product.prix_vente, product.devise) + '</td>' +
             '<td>' + product.quantite + '</td>' +
+            '<td style="font-weight: 600;">' + formatCurrency((product.prix_achat || 0) * (product.quantite || 0), product.devise) + '</td>' +
+            '<td style="font-weight: 600;">' + formatCurrency((product.prix_vente || 0) * (product.quantite || 0), product.devise) + '</td>' +
             '<td>' + renderExpirationCell(product) + '</td>' +
             '<td style="font-size: 12px; color: var(--gray-600);">' + dateAjout + '</td>' +
             '<td><span style="' + getStockStatusStyle(status) + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>' +
@@ -1233,6 +1237,12 @@ function renderProductsTable(products) {
             '</td>' +
         '</tr>';
     }).join('');
+}
+
+function truncateCell(text, maxWidth, extraStyle = '') {
+    const full = (text === null || text === undefined) ? '' : String(text);
+    const escaped = full.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return '<div style="max-width: ' + maxWidth + 'px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; ' + extraStyle + '" title="' + escaped + '">' + escaped + '</div>';
 }
 
 function getStockStatusStyle(status) {
