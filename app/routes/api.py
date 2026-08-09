@@ -251,7 +251,7 @@ def create_produit():
                     produit_existant.id, 'reapprovisionnement', qty_avant, produit_existant.quantite,
                     f"Produit existant : ajout de +{quantite_additionnelle} unités en stock"
                 )
-            
+
             # Mettre à jour les images si de nouvelles sont fournies
             upload_folder = current_app.config['UPLOAD_FOLDER']
             url_1 = enregistrer_image(request.files.get('image_1'), upload_folder)
@@ -260,31 +260,31 @@ def create_produit():
             url_2 = enregistrer_image(request.files.get('image_2'), upload_folder)
             if url_2:
                 produit_existant.image_url_2 = url_2
-            
-        db.session.commit()
-        
-        # Journaliser la modification (focalisée sur le changement de stock)
-        desc = f"Modification du produit"
-        if produit.quantite != qty_avant:
-            desc += f" — stock {qty_avant} → {produit.quantite}"
-        enregistrer_activite_stock(
-            produit.id, 'modification', qty_avant, produit.quantite, desc
-        )
-        db.session.commit()
-        
-        from app.vision import dataset as dataset_vision
-        try:
-            dataset_vision.mettre_a_jour_signatures_produit(produit, current_app.config['UPLOAD_FOLDER'])
-        except Exception:
-            pass
-            
+
+            db.session.commit()
+
+            # Journaliser la modification (focalisée sur le changement de stock)
+            desc = "Modification du produit"
+            if produit_existant.quantite != qty_avant:
+                desc += f" — stock {qty_avant} → {produit_existant.quantite}"
+            enregistrer_activite_stock(
+                produit_existant.id, 'modification', qty_avant, produit_existant.quantite, desc
+            )
+            db.session.commit()
+
+            from app.vision import dataset as dataset_vision
+            try:
+                dataset_vision.mettre_a_jour_signatures_produit(produit_existant, current_app.config['UPLOAD_FOLDER'])
+            except Exception:
+                pass
+
             return jsonify({
                 'success': True,
                 'message': 'Produit existant mis à jour avec succès',
                 'produit': produit_existant.to_dict(),
                 'existant': True
             }), 200
-        
+
         # Créer un nouveau produit
         reference = data.get('reference')
         code_barres = data.get('code_barres')
