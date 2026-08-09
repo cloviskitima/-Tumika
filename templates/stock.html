@@ -1220,7 +1220,7 @@ function renderProductsTable(products) {
     
     tbody.innerHTML = products.map(product => {
         const status = getStockStatus(product.quantite, product.stock_min);
-        const dateAjout = product.date_creation ? new Date(product.date_creation).toLocaleDateString('fr-FR') : '-';
+        const dateAjout = product.created_at ? new Date(product.created_at).toLocaleDateString('fr-FR') : '-';
         
         return '<tr data-product-id="' + product.id + '">' +
             '<td>' +
@@ -1357,7 +1357,7 @@ async function exportStockSheet() {
         let totalValue = 0;
         products.forEach(product => {
             const status = getStockStatus(product.quantite, product.stock_min);
-            const dateAjout = product.date_creation ? new Date(product.date_creation).toLocaleDateString('fr-FR') : '-';
+            const dateAjout = product.created_at ? new Date(product.created_at).toLocaleDateString('fr-FR') : '-';
             const stockValue = product.prix_achat * product.quantite;
             totalValue += stockValue;
             
