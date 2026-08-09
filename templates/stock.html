@@ -118,24 +118,40 @@
 <!-- Products Table -->
 <div class="card">
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table" id="productsTable">
+        <div style="overflow-x: hidden;">
+            <table class="table" id="productsTable" style="table-layout: fixed; width: 100%;">
+                <colgroup>
+                    <col style="width: 4%;">
+                    <col style="width: 13%;">
+                    <col style="width: 7%;">
+                    <col style="width: 7%;">
+                    <col style="width: 7%;">
+                    <col style="width: 6%;">
+                    <col style="width: 6%;">
+                    <col style="width: 4%;">
+                    <col style="width: 7%;">
+                    <col style="width: 7%;">
+                    <col style="width: 7%;">
+                    <col style="width: 6%;">
+                    <col style="width: 5%;">
+                    <col style="width: 14%;">
+                </colgroup>
                 <thead>
                     <tr>
-                        <th>Image</th>
-                        <th>Produit</th>
-                        <th>Référence</th>
-                        <th>Code-barres</th>
-                        <th>Catégorie</th>
-                        <th>Prix Achat</th>
-                        <th>Prix Vente</th>
-                        <th>Quantité</th>
-                        <th>Total Achat</th>
-                        <th>Total Vente</th>
-                        <th>Expiration</th>
-                        <th>Date Ajout</th>
-                        <th>Statut</th>
-                        <th>Actions</th>
+                        <th style="white-space: nowrap; font-size: 12px;">Image</th>
+                        <th style="font-size: 12px;">Produit</th>
+                        <th style="font-size: 12px;">Référence</th>
+                        <th style="font-size: 12px;">Code-barres</th>
+                        <th style="font-size: 12px;">Catégorie</th>
+                        <th style="font-size: 12px; white-space: nowrap;">Prix Achat</th>
+                        <th style="font-size: 12px; white-space: nowrap;">Prix Vente</th>
+                        <th style="font-size: 12px;">Qté</th>
+                        <th style="font-size: 12px; white-space: nowrap;">Total Achat</th>
+                        <th style="font-size: 12px; white-space: nowrap;">Total Vente</th>
+                        <th style="font-size: 12px;">Expiration</th>
+                        <th style="font-size: 12px;">Date Ajout</th>
+                        <th style="font-size: 12px;">Statut</th>
+                        <th style="font-size: 12px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="productsTableBody">
@@ -1219,20 +1235,20 @@ function renderProductsTable(products) {
             '<td>' + truncateCell(product.reference, 130, "font-family: 'Courier New', monospace; font-size: 12px;") + '</td>' +
             '<td>' + truncateCell(product.code_barres, 130, "font-family: 'Courier New', monospace; font-size: 12px;") + '</td>' +
             '<td>' + truncateCell(product.categorie || '-', 120) + '</td>' +
-            '<td>' + formatCurrency(product.prix_achat, product.devise) + '</td>' +
-            '<td>' + formatCurrency(product.prix_vente, product.devise) + '</td>' +
-            '<td>' + product.quantite + '</td>' +
-            '<td style="font-weight: 600;">' + formatCurrency((product.prix_achat || 0) * (product.quantite || 0), product.devise) + '</td>' +
-            '<td style="font-weight: 600;">' + formatCurrency((product.prix_vente || 0) * (product.quantite || 0), product.devise) + '</td>' +
+            '<td style="white-space: nowrap;">' + formatCurrency(product.prix_achat, product.devise) + '</td>' +
+            '<td style="white-space: nowrap;">' + formatCurrency(product.prix_vente, product.devise) + '</td>' +
+            '<td style="white-space: nowrap; text-align: center;">' + product.quantite + '</td>' +
+            '<td style="white-space: nowrap; font-weight: 600;">' + formatCurrency((product.prix_achat || 0) * (product.quantite || 0), product.devise) + '</td>' +
+            '<td style="white-space: nowrap; font-weight: 600;">' + formatCurrency((product.prix_vente || 0) * (product.quantite || 0), product.devise) + '</td>' +
             '<td>' + renderExpirationCell(product) + '</td>' +
-            '<td style="font-size: 12px; color: var(--gray-600);">' + dateAjout + '</td>' +
+            '<td style="font-size: 12px; color: var(--gray-600); white-space: nowrap;">' + dateAjout + '</td>' +
             '<td><span style="' + getStockStatusStyle(status) + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>' +
             '<td>' +
-                '<div style="display: flex; gap: 8px;">' +
-                    '<button onclick="generateQRCode(\'' + product.reference + '\')" class="btn btn-secondary" style="padding: 4px 8px;" title="QR Code"><i class="bi bi-qr-code"></i></button>' +
-                    '<button onclick="generateBarcode(\'' + product.code_barres + '\')" class="btn btn-secondary" style="padding: 4px 8px;" title="Code-barres"><i class="bi bi-upc-scan"></i></button>' +
-                    '<button onclick="editProduct(' + product.id + ')" class="btn btn-secondary" style="padding: 4px 8px;" title="Modifier"><i class="bi bi-pencil"></i></button>' +
-                    '<button onclick="deleteProduct(' + product.id + ')" class="btn btn-danger" style="padding: 4px 8px;" title="Supprimer"><i class="bi bi-trash"></i></button>' +
+                '<div style="display: flex; gap: 4px; justify-content: center;">' +
+                    '<button onclick="generateQRCode(\'' + product.reference + '\')" class="btn btn-secondary" style="padding: 3px 4px; font-size: 12px;" title="QR Code"><i class="bi bi-qr-code"></i></button>' +
+                    '<button onclick="generateBarcode(\'' + product.code_barres + '\')" class="btn btn-secondary" style="padding: 3px 4px; font-size: 12px;" title="Code-barres"><i class="bi bi-upc-scan"></i></button>' +
+                    '<button onclick="editProduct(' + product.id + ')" class="btn btn-secondary" style="padding: 3px 4px; font-size: 12px;" title="Modifier"><i class="bi bi-pencil"></i></button>' +
+                    '<button onclick="deleteProduct(' + product.id + ')" class="btn btn-danger" style="padding: 3px 4px; font-size: 12px;" title="Supprimer"><i class="bi bi-trash"></i></button>' +
                 '</div>' +
             '</td>' +
         '</tr>';
