@@ -887,69 +887,25 @@ function debounce(func, wait) {
 }
 
 function updateQRCodePreview(reference) {
+    const qrPreview = document.getElementById('qrCodePreview');
+    const barcodeDisplay = document.getElementById('barcodeDisplay');
     if (!reference) {
-        document.getElementById('qrCodePreview').innerHTML = '<span style="font-size: 24px;">📱</span>';
-        document.getElementById('barcodeDisplay').style.display = 'none';
+        qrPreview.innerHTML = '<span style="font-size: 24px;">📱</span>';
+        barcodeDisplay.style.display = 'none';
         return;
     }
-    
-    const preview = document.getElementById('qrCodePreview');
+
     const qrSize = 150;
-    
-    // Générer un QR code visuel basique (pattern simple)
-    let qrSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" width="${qrSize}" height="${qrSize}" style="background: white; border: 2px solid #333;">`;
-    
-    // Pattern de QR code basique
-    const pattern = [
-        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1],
-        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,0,1,1,1,1,0,0,0,0,1],
-        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0,1,1,1,0,1],
-        [1,0,1,1,1,0,1,0,1,0,1,0,1,0,1,0,0,1,1,0,1,1,1,0,1],
-        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,1,0,0,0,1,1,1,0,1],
-        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1],
-        [0,0,0,0,0,0,0,0,1,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0],
-        [0,1,1,1,0,1,0,0,0,1,0,0,1,0,0,1,0,1,0,0,1,1,0,1,0],
-        [0,0,0,1,1,0,0,1,1,1,1,1,0,1,1,1,1,1,0,0,0,1,1,0,0],
-        [0,1,1,0,0,1,0,0,0,0,1,0,1,0,1,0,0,0,0,1,1,0,0,1,0],
-        [0,0,0,1,1,0,0,0,1,0,1,1,0,1,1,0,0,1,1,0,0,0,1,1,0],
-        [1,0,1,0,0,0,1,0,0,1,0,0,0,0,0,1,0,0,1,0,0,0,1,0,1],
-        [0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0,1,0,0,0,0,0,0,0,0],
-        [0,1,1,0,1,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,1,0,1,1,0],
-        [0,0,1,1,1,1,0,0,1,1,0,0,0,0,0,0,1,1,0,1,1,1,1,0,0],
-        [0,1,0,0,0,1,0,1,0,0,1,1,1,1,1,1,0,0,1,0,0,0,1,0,1],
-        [0,1,1,1,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,1,1,0,1],
-        [0,0,0,0,0,0,0,0,1,1,1,0,1,0,1,1,1,0,0,0,0,0,0,0,0],
-        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1],
-        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1],
-        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0,1,1,1,0,1],
-        [1,0,1,1,1,0,1,0,1,0,1,0,1,0,1,0,0,1,1,0,1,1,1,0,1],
-        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,1,0,0,0,1,1,1,0,1],
-        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1]
-    ];
-    
-    for (let y = 0; y < 25; y++) {
-        for (let x = 0; x < 25; x++) {
-            if (pattern[y][x] === 1) {
-                qrSVG += `<rect x="${x}" y="${y}" width="1" height="1" fill="black"/>`;
-            }
-        }
-    }
-    
-    qrSVG += '</svg>';
-    preview.innerHTML = qrSVG;
-    
-    // Afficher le code-barres à côté
-    const barcodeDisplay = document.getElementById('barcodeDisplay');
+    qrPreview.innerHTML = `<img src="/api/qrcode?data=${encodeURIComponent(reference)}&size=${qrSize}" alt="QR Code" style="width: ${qrSize}px; height: ${qrSize}px; border-radius: 4px; background: white; display: block;">`;
+
+    const barcodeEl = document.getElementById('productBarcode');
+    const barcodeValue = (barcodeEl && barcodeEl.value) ? barcodeEl.value : reference;
     barcodeDisplay.style.display = 'block';
     barcodeDisplay.innerHTML = `
-        <div style="font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px; font-weight: bold; color: #333;">
-            ${reference}
+        <div style="font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px; font-weight: bold; color: #333; text-align: center; word-break: break-all;">
+            ${barcodeValue}
         </div>
-        <div style="display: flex; gap: 1px; margin-top: 2px;">
-            ${generateBarcodePattern(reference)}
-        </div>
+        <img src="/api/barcode?data=${encodeURIComponent(barcodeValue)}" alt="Code-barres" style="width: 100%; max-width: 150px; height: auto; margin-top: 2px; background: white; border-radius: 4px; display: block;">
     `;
 }
 
@@ -1283,7 +1239,7 @@ async function exportStockSheet() {
             html += '<td>' + (product.image_url_1 ? '<img src="' + product.image_url_1 + '" class="product-image">' : '<div style="width: 60px; height: 60px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #adb5bd;">📦</div>') + '</td>';
             html += '<td><strong>' + product.nom + '</strong><br><small style="color: #6c757d;">' + (product.fournisseur || '') + '</small></td>';
             html += '<td style="font-family: monospace; background: #f8f9fa; padding: 8px; border-radius: 4px;">' + product.reference + '</td>';
-            html += '<td><div style="width: 50px; height: 50px; background: white; border: 2px solid #2c3e50; display: flex; align-items: center; justify-content: center; font-size: 10px; border-radius: 4px;">QR</div></td>';
+            html += '<td><img src="/api/qrcode?data=' + encodeURIComponent(product.reference) + '&size=100" alt="QR" class="qr-code" style="width: 50px; height: 50px; background: white; border-radius: 4px;"></td>';
             html += '<td>' + (product.categorie || '-') + '</td>';
             html += '<td>' + dateAjout + '</td>';
             html += '<td>' + formatCurrency(product.prix_achat, product.devise) + '</td>';
@@ -1652,8 +1608,8 @@ function generateBarcode(codeBarres) {
                 <div style="font-family: 'Courier New', monospace; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #333; margin-bottom: 24px; padding: 16px; background: var(--gray-100); border-radius: 8px;">
                     ${codeBarres}
                 </div>
-                <div style="display: flex; justify-content: center; gap: 2px; margin-top: 24px; padding: 20px; background: white; border: 3px solid #333; border-radius: 8px;">
-                    ${generateBarcodePattern(codeBarres)}
+                <div style="display: flex; justify-content: center; margin-top: 24px; padding: 20px; background: white; border: 3px solid #333; border-radius: 8px;">
+                    <img src="/api/barcode?data=${encodeURIComponent(codeBarres)}" alt="Code-barres" style="max-width: 100%; height: auto; display: block;">
                 </div>
             </div>
             <div style="text-align: center; margin-top: 24px; color: #666; font-size: 16px; margin-bottom: 20px;">
@@ -1676,50 +1632,9 @@ function generateQRCode(reference) {
         return;
     }
     
-    // Générer un QR code visuel basique
+    // Générer un vrai QR code contenant la référence (scannable)
     const qrSize = 300;
-    
-    let qrSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" width="${qrSize}" height="${qrSize}" style="background: white; border: 3px solid #333;">`;
-    
-    // Pattern de QR code basique
-    const pattern = [
-        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1],
-        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,0,1,1,1,1,0,0,0,0,1],
-        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0,1,1,1,0,1],
-        [1,0,1,1,1,0,1,0,1,0,1,0,1,0,1,0,0,1,1,0,1,1,1,0,1],
-        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,1,0,0,0,1,1,1,0,1],
-        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1],
-        [0,0,0,0,0,0,0,0,1,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0],
-        [0,1,1,1,0,1,0,0,0,1,0,0,1,0,0,1,0,1,0,0,1,1,0,1,0],
-        [0,0,0,1,1,0,0,1,1,1,1,1,0,1,1,1,1,1,0,0,0,1,1,0,0],
-        [0,1,1,0,0,1,0,0,0,0,1,0,1,0,1,0,0,0,0,1,1,0,0,1,0],
-        [0,0,0,1,1,0,0,0,1,0,1,1,0,1,1,0,0,1,1,0,0,0,1,1,0],
-        [1,0,1,0,0,0,1,0,0,1,0,0,0,0,0,1,0,0,1,0,0,0,1,0,1],
-        [0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0,1,0,0,0,0,0,0,0,0],
-        [0,1,1,0,1,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,1,0,1,1,0],
-        [0,0,1,1,1,1,0,0,1,1,0,0,0,0,0,0,1,1,0,1,1,1,1,0,0],
-        [0,1,0,0,0,1,0,1,0,0,1,1,1,1,1,1,0,0,1,0,0,0,1,0,1],
-        [0,1,1,1,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,1,1,0,1],
-        [0,0,0,0,0,0,0,0,1,1,1,0,1,0,1,1,1,0,0,0,0,0,0,0,0],
-        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1],
-        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1],
-        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0,1,1,1,0,1],
-        [1,0,1,1,1,0,1,0,1,0,1,0,1,0,1,0,0,1,1,0,1,1,1,0,1],
-        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,1,0,0,0,1,1,1,0,1],
-        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1],
-        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1]
-    ];
-    
-    for (let y = 0; y < 25; y++) {
-        for (let x = 0; x < 25; x++) {
-            if (pattern[y][x] === 1) {
-                qrSVG += `<rect x="${x}" y="${y}" width="1" height="1" fill="black"/>`;
-            }
-        }
-    }
-    
-    qrSVG += '</svg>';
+    const qrImage = `<img src="/api/qrcode?data=${encodeURIComponent(reference)}&size=${qrSize}" alt="QR Code" style="width: ${qrSize}px; height: ${qrSize}px; background: white; display: block;">`;
     
     const modal = document.createElement('div');
     modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 2000; display: flex; justify-content: center; align-items: center; cursor: pointer;';
@@ -1727,7 +1642,7 @@ function generateQRCode(reference) {
         <div style="background: white; border-radius: 16px; padding: 32px; text-align: center; max-width: 500px; cursor: default;" onclick="event.stopPropagation()">
             <h3 style="margin-bottom: 20px; color: #333;">QR Code - Référence du Produit</h3>
             <div style="background: white; border: 3px solid #333; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; border-radius: 8px; padding: 20px;">
-                ${qrSVG}
+                ${qrImage}
             </div>
             <p style="font-family: 'Courier New', monospace; background: var(--gray-100); padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 18px; font-weight: bold; color: #333; letter-spacing: 2px;">${reference}</p>
             <div style="font-size: 14px; color: #666; margin-bottom: 16px;">

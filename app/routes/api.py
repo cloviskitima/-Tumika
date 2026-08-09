@@ -16,6 +16,7 @@ from app.models.identification import ProduitSignature, CorrectionIdentification
 from app.models.reapprovisionnement import Reapprovisionnement
 from app.models.activite_stock import ActiviteStock
 from app.vision.identification import analyser_image, identifier_par_texte, identifier_par_code
+from app.utils.qr_generator import generate_qr_png_bytes, generate_barcode_png_bytes
 from app.utils.comptabilite import (
     seed_plan_comptable,
     synchroniser_compta,
@@ -58,6 +59,28 @@ def _valider_contenu_image(data):
         return True
     except Exception:
         return False
+
+
+@api_bp.route('/qrcode')
+def api_qrcode():
+    """Génère un QR code PNG réel contenant les données fournies (ex : référence)."""
+    data = request.args.get('data', '')
+    if not data:
+        return jsonify({'success': False, 'message': 'Donnée manquante'}), 400
+    try:
+        size = min(max(int(request.args.get('size', 300)), 100), 800)
+    except (TypeError, ValueError):
+        size = 300
+    return Response(generate_qr_png_bytes(data, size), mimetype='image/png')
+
+
+@api_bp.route('/barcode')
+def api_barcode():
+    """Génère un code-barres PNG réel contenant le code fourni (ex : code-barres produit)."""
+    data = request.args.get('data', '')
+    if not data:
+        return jsonify({'success': False, 'message': 'Donnée manquante'}), 400
+    return Response(generate_barcode_png_bytes(data), mimetype='image/png')
 
 
 def enregistrer_image(file, upload_folder):

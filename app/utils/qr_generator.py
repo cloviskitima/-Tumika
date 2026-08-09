@@ -1,58 +1,55 @@
 """
-Générateur de QR codes en local
-Utilise une implémentation légère sans dépendance externe
+Générateur de QR codes et codes-barres RÉELS (scannables)
+Utilise les librairies qrcode et python-barcode (voir requirements.txt)
 """
-import base64
+
 from io import BytesIO
 
 
-def generate_qr_code_svg(data, size=100):
+def generate_qr_png_bytes(data, size=300):
     """
-    Génère un QR code au format SVG en local
-    Cette fonction utilise une méthode simple pour générer un QR code
-    sans dépendance externe complexe
+    Génère un QR code PNG réel contenant `data` (scannable).
+    À la lecture, le scanner retrouvera exactement `data`
+    (par exemple la référence du produit).
     """
-    # Pour l'instant, nous allons utiliser une méthode simple
-    # qui génère un QR code basique en SVG
-    # Note: Pour une production réelle, utiliser une librairie comme qrcode
-    
-    # Génération d'un QR code SVG basique
-    qr_svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="{size}" height="{size}">
-        <rect width="100" height="100" fill="white"/>
-        <text x="50" y="50" text-anchor="middle" font-size="8" fill="black">QR: {data[:10]}...</text>
-    </svg>"""
-    
-    return qr_svg
+    import qrcode
+    from qrcode.constants import ERROR_CORRECT_M
+
+    qr = qrcode.QRCode(
+        error_correction=ERROR_CORRECT_M,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(str(data))
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+    if size and size > 0:
+        img = img.resize((size, size))
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
 
 
-def generate_qr_code_base64(data, size=100):
+def generate_barcode_png_bytes(code, dpi=200):
     """
-    Génère un QR code et le retourne en base64
+    Génère un code-barres PNG réel (Code128) contenant `code`.
+    À la lecture, le scanner retrouvera exactement `code`
+    (par exemple le code-barres du produit).
     """
-    qr_svg = generate_qr_code_svg(data, size)
-    qr_base64 = base64.b64encode(qr_svg.encode()).decode()
-    return f"data:image/svg+xml;base64,{qr_base64}"
+    from barcode import Code128
+    from barcode.writer import ImageWriter
 
-
-def generate_barcode_svg(code, width=100, height=50):
-    """
-    Génère un code-barres visuel en SVG
-    """
-    # Génération d'un code-barres SVG basique
-    # Pour une production réelle, utiliser une librairie comme python-barcode
-    
-    barcode_svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50" width="{width}" height="{height}">
-        <rect width="100" height="50" fill="white"/>
-        <text x="50" y="25" text-anchor="middle" font-size="6" fill="black">{code}</text>
-    </svg>"""
-    
-    return barcode_svg
-
-
-def generate_barcode_base64(code, width=100, height=50):
-    """
-    Génère un code-barres et le retourne en base64
-    """
-    barcode_svg = generate_barcode_svg(code, width, height)
-    barcode_base64 = base64.b64encode(barcode_svg.encode()).decode()
-    return f"data:image/svg+xml;base64,{barcode_base64}"
+    options = {
+        "module_width": 0.4,
+        "module_height": 15.0,
+        "font_size": 12,
+        "text_distance": 3.0,
+        "quiet_zone": 6.5,
+        "dpi": dpi,
+        "format": "PNG",
+    }
+    writer = ImageWriter()
+    bc = Code128(str(code), writer=writer)
+    buf = BytesIO()
+    bc.write(buf, options=options)
+    return buf.getvalue()
