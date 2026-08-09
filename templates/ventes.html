@@ -422,10 +422,6 @@
                         <span>Sous-total:</span>
                         <span id="subtotal">0 FC</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 6px; opacity: 0.85;">
-                        <span>TVA (16% incluse):</span>
-                        <span id="tax">0 FC</span>
-                    </div>
 
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; font-weight: 800; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
                         <span>TOTAL:</span>
@@ -889,10 +885,9 @@ function getSaleTotal() {
 
     const isUSD = (saleCurrency === 'USD');
     const subtotal = isUSD ? subtotalUSD : subtotalFC;
-    const tax = subtotal * 0.18;
-    const total = subtotal + tax;
+    const total = subtotal;
 
-    return { subtotal, tax, total, currency: saleCurrency };
+    return { subtotal, tax: 0, total, currency: saleCurrency };
 }
 
 function updateCartSummary() {
@@ -900,7 +895,6 @@ function updateCartSummary() {
     const isUSD = (totals.currency === 'USD');
 
     document.getElementById('subtotal').textContent = isUSD ? `$ ${totals.subtotal.toFixed(2)}` : `${formatCurrency(totals.subtotal, 'CDF')}`;
-    document.getElementById('tax').textContent = isUSD ? `$ ${totals.tax.toFixed(2)}` : `${formatCurrency(totals.tax, 'CDF')}`;
     document.getElementById('total').textContent = isUSD ? `$ ${totals.total.toFixed(2)}` : `${formatCurrency(totals.total, 'CDF')}`;
 }
 
