@@ -3392,7 +3392,7 @@ def update_settings_generaux():
     """Enregistre les informations générales de l'entreprise."""
     try:
         data = request.get_json() or {}
-        champs = ['nom_entreprise', 'slogan', 'adresse', 'telephone', 'email', 'devise_principale']
+        champs = ['nom_entreprise', 'slogan', 'adresse', 'telephone', 'email', 'rccm', 'devise_principale']
         for champ in champs:
             if champ in data:
                 set_param(champ, data.get(champ) or '')
@@ -3429,6 +3429,43 @@ def update_settings_apparence():
                 set_param(champ, data.get(champ))
         db.session.commit()
         return jsonify({'success': True, 'message': 'Apparence mise à jour'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erreur: {str(e)}'}), 400
+
+
+@api_bp.route('/settings/facture', methods=['PUT'])
+def update_settings_facture():
+    """Enregistre les paramètres de la facture (design, éléments affichés, images)."""
+    try:
+        data = request.get_json() or {}
+
+        def to_bool(v):
+            return 'true' if str(v).lower() in ('true', '1', 'yes', 'on') else 'false'
+
+        texte = ['facture_design', 'facture_titre', 'facture_mention']
+        booleen = ['facture_afficher_entreprise', 'facture_afficher_slogan',
+                   'facture_afficher_adresse', 'facture_afficher_telephone',
+                   'facture_afficher_email', 'facture_afficher_rccm',
+                   'facture_afficher_numero', 'facture_afficher_date',
+                   'facture_afficher_mention', 'facture_afficher_signatures']
+        image = ['facture_signature_image', 'facture_cachet_image']
+
+        for champ in texte:
+            if champ in data:
+                set_param(champ, (data.get(champ) or '').strip())
+        for champ in booleen:
+            if champ in data:
+                set_param(champ, to_bool(data.get(champ)))
+        for champ in image:
+            if champ in data:
+                valeur = (data.get(champ) or '').strip()
+                if valeur.startswith('data:image'):
+                    set_param(champ, valeur)
+                else:
+                    set_param(champ, '')
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Paramètres de la facture enregistrés avec succès'})
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Erreur: {str(e)}'}), 400

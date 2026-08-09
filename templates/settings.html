@@ -255,6 +255,35 @@
     .recap-table tr:hover td { background: #f8fafc; }
     .recap-table .recap-label { font-weight: 800; color: var(--gray-700); }
     .recap-flash { box-shadow: 0 0 0 3px rgba(30,58,138,0.35) !important; transition: box-shadow 0.2s ease; }
+
+    /* Sélecteur de design de facture */
+    .design-picker { display: flex; gap: 14px; flex-wrap: wrap; }
+    .design-card {
+        flex: 1 1 160px; max-width: 220px; border: 2px solid var(--gray-200); border-radius: 14px;
+        padding: 14px 14px 12px; text-align: center; cursor: pointer; transition: all 0.2s ease;
+        position: relative; background: #ffffff;
+    }
+    .design-card:hover { border-color: var(--gray-400); transform: translateY(-2px); }
+    .design-card.active { border-color: #1e3a8a; background: rgba(30,58,138,0.05); box-shadow: 0 4px 12px -3px rgba(30,58,138,0.25); }
+    .design-card .design-thumb { display: block; height: 64px; margin: 0 auto 8px; border-radius: 8px; border: 1px solid var(--gray-200); background: #ffffff; position: relative; overflow: hidden; }
+    .design-card .design-thumb.moderne::before { content: '#'; position: absolute; top: 8px; left: 10px; font-weight: 900; font-size: 1.1rem; color: #0f172a; }
+    .design-card .design-thumb.moderne::after { content: ''; position: absolute; top: 34px; left: 10px; right: 10px; border-top: 3px solid #0f172a; }
+    .design-card .design-thumb.classique::before { content: 'FACTURE'; position: absolute; top: 10px; left: 0; right: 0; text-align: center; font-family: Georgia, serif; font-weight: 700; letter-spacing: 3px; font-size: 0.62rem; color: #0f172a; }
+    .design-card .design-thumb.classique::after { content: ''; position: absolute; top: 30px; left: 8px; right: 8px; border: 1px double #0f172a; height: 24px; }
+    .design-card .design-thumb.minimal::before { content: 'FACTURE'; position: absolute; top: 18px; left: 0; right: 0; text-align: center; font-weight: 800; letter-spacing: 4px; font-size: 0.66rem; color: #111827; }
+    .design-card .design-thumb.minimal::after { content: ''; position: absolute; bottom: 10px; left: 14px; right: 14px; border-top: 1px solid #e5e7eb; }
+    .design-card .design-name { display: block; font-weight: 800; font-size: 0.95rem; color: var(--gray-800); }
+    .design-card .design-desc { display: block; font-size: 0.74rem; color: var(--gray-500); margin-top: 2px; }
+    .design-card .design-check { position: absolute; top: 8px; right: 8px; color: #1e3a8a; font-size: 1.1rem; opacity: 0; transition: opacity 0.2s ease; }
+    .design-card.active .design-check { opacity: 1; }
+
+    /* Prévisualisation images signature / cachet */
+    .img-preview-wrap { display: flex; align-items: center; gap: 14px; border: 1px solid var(--gray-200); border-radius: 12px; padding: 12px 14px; }
+    .img-preview-box { width: 132px; height: 74px; border: 1px dashed var(--gray-300); border-radius: 10px; display: flex; align-items: center; justify-content: center; background: #ffffff; overflow: hidden; flex-shrink: 0; }
+    .img-preview-box img { max-width: 122px; max-height: 64px; }
+    .img-preview-box .ph { font-size: 0.7rem; color: var(--gray-400); text-align: center; line-height: 1.3; }
+    .img-actions { display: flex; flex-direction: column; gap: 8px; }
+
 </style>
 
 <!-- Hero -->
@@ -277,6 +306,10 @@
         <button class="settings-nav-link active" data-panel="general">
             <span class="nav-icon"><i class="bi bi-buildings"></i></span>
             <span class="nav-text"><b>Entreprise</b><span>Informations générales</span></span>
+        </button>
+        <button class="settings-nav-link" data-panel="facture">
+            <span class="nav-icon"><i class="bi bi-file-earmark-text"></i></span>
+            <span class="nav-text"><b>Facture</b><span>Design & éléments affichés</span></span>
         </button>
         <button class="settings-nav-link" data-panel="security">
             <span class="nav-icon"><i class="bi bi-shield-lock"></i></span>
@@ -338,6 +371,10 @@
                         <input type="email" id="pEmail" class="form-control" placeholder="contact@entreprise.cd">
                     </div>
                     <div class="col-md-6">
+                        <label class="form-label">RCCM</label>
+                        <input type="text" id="pRccm" class="form-control" placeholder="Numéro RCCM">
+                    </div>
+                    <div class="col-md-6">
                         <label class="form-label">Devise principale</label>
                         <select id="pDevise" class="form-select">
                             <option value="USD">USD — Dollar américain ($)</option>
@@ -348,6 +385,132 @@
                 </div>
                 <div class="save-bar">
                     <button class="btn btn-primary" onclick="saveGeneral()"><i class="bi bi-check-lg"></i> Enregistrer les informations</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ──── FACTURE ──── -->
+        <div id="facture" class="settings-panel">
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon primary"><i class="bi bi-file-earmark-text"></i></div>
+                    <div>
+                        <h3>Design de la facture</h3>
+                        <p>Choisissez la présentation appliquée à vos documents de vente.</p>
+                    </div>
+                </div>
+                <div class="design-picker" id="factureDesignPicker">
+                    <div class="design-card" data-design="moderne">
+                        <span class="design-check"><i class="bi bi-check-circle-fill"></i></span>
+                        <span class="design-thumb moderne"></span>
+                        <span class="design-name">Moderne</span>
+                        <span class="design-desc">En-tête corporate, traits forts</span>
+                    </div>
+                    <div class="design-card" data-design="classique">
+                        <span class="design-check"><i class="bi bi-check-circle-fill"></i></span>
+                        <span class="design-thumb classique"></span>
+                        <span class="design-name">Classique</span>
+                        <span class="design-desc">Cadres, typographie traditionnelle</span>
+                    </div>
+                    <div class="design-card" data-design="minimal">
+                        <span class="design-check"><i class="bi bi-check-circle-fill"></i></span>
+                        <span class="design-thumb minimal"></span>
+                        <span class="design-name">Minimal</span>
+                        <span class="design-desc">Lignes sobres et épurées</span>
+                    </div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label">Titre du document</label>
+                        <input type="text" id="pFactureTitre" class="form-control" placeholder="FACTURE" value="FACTURE">
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon indigo"><i class="bi bi-ui-checks"></i></div>
+                    <div>
+                        <h3>Éléments affichés sur la facture</h3>
+                        <p>Activez ou masquez chaque élément du document.</p>
+                    </div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>En-tête de l'entreprise</b><span>Afficher le nom de l'entreprise, le slogan et les coordonnées en en-tête</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pFactureEnt"></div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>Slogan</b><span>Afficher le slogan sous le nom de l'entreprise</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pFactureSlogan"></div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>Adresse</b><span>Afficher l'adresse de l'entreprise</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pFactureAdresse"></div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>Téléphone</b><span>Afficher le numéro de téléphone</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pFactureTel"></div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>Email</b><span>Afficher l'adresse email</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pFactureEmail"></div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>RCCM</b><span>Afficher le numéro RCCM de l'entreprise</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pFactureRccm"></div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>Numéro & date</b><span>Afficher le numéro de la facture et sa date</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pFactureNumDate"></div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>Signatures</b><span>Afficher les zones « Signature du client » et « Visa vendeur »</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pFactureSign"></div>
+                </div>
+                <div class="toggle-row">
+                    <div><b>Mention personnalisée</b><span>Afficher une note en bas de la facture (ex : TVA incluse, garantie)</span></div>
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="pFactureMention"></div>
+                </div>
+                <div class="mt-2">
+                    <label class="form-label">Texte de la mention</label>
+                    <textarea id="pFactureMentionText" class="form-control" rows="2" placeholder="TVA 16% incluse dans le prix de vente — déjà acquittée lors du dédouanement des marchandises."></textarea>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <div class="head-icon warning"><i class="bi bi-pen"></i></div>
+                    <div>
+                        <h3>Signature & cachet</h3>
+                        <p>Téléchargez une image de votre signature et de votre cachet (tampon). Elles seront insérées automatiquement sur la facture. Formats acceptés : PNG, JPG (fond transparent recommandé).</p>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Image de signature (du client)</label>
+                        <div class="img-preview-wrap">
+                            <div class="img-preview-box"><span class="ph" id="pSigPh">Aucune image</span><img id="pSigPreview" style="display:none;" alt="Signature"></div>
+                            <div class="img-actions">
+                                <input type="file" id="pSigFile" accept="image/png,image/jpeg" class="form-control form-control-sm" onchange="loadInvoiceImage('pSigFile','pSigPreview','pSigPh','pSigData')">
+                                <button class="btn btn-sm btn-outline-danger" onclick="removeInvoiceImage('pSigPreview','pSigPh','pSigData')"><i class="bi bi-trash"></i> Retirer</button>
+                            </div>
+                            <input type="hidden" id="pSigData" value="">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Image du cachet / tampon (vendeur)</label>
+                        <div class="img-preview-wrap">
+                            <div class="img-preview-box"><span class="ph" id="pCachetPh">Aucune image</span><img id="pCachetPreview" style="display:none;" alt="Cachet"></div>
+                            <div class="img-actions">
+                                <input type="file" id="pCachetFile" accept="image/png,image/jpeg" class="form-control form-control-sm" onchange="loadInvoiceImage('pCachetFile','pCachetPreview','pCachetPh','pCachetData')">
+                                <button class="btn btn-sm btn-outline-danger" onclick="removeInvoiceImage('pCachetPreview','pCachetPh','pCachetData')"><i class="bi bi-trash"></i> Retirer</button>
+                            </div>
+                            <input type="hidden" id="pCachetData" value="">
+                        </div>
+                    </div>
+                </div>
+                <div class="save-bar">
+                    <button class="btn btn-primary" onclick="saveFacture()"><i class="bi bi-check-lg"></i> Enregistrer les paramètres de la facture</button>
                 </div>
             </div>
         </div>
@@ -770,6 +933,7 @@ function saveActivePanel() {
     const active = document.querySelector('.settings-panel.active');
     if (!active) return;
     if (active.id === 'general') saveGeneral();
+    else if (active.id === 'facture') saveFacture();
     else if (active.id === 'notifications') saveNotifications();
     else if (active.id === 'appearance') saveAppearance();
     else if (active.id === 'rapportemail') reEnregistrer();
@@ -790,6 +954,7 @@ async function loadSettings() {
         document.getElementById('pAdresse').value = p.adresse || '';
         document.getElementById('pTelephone').value = p.telephone || '';
         document.getElementById('pEmail').value = p.email || '';
+        document.getElementById('pRccm').value = p.rccm || '';
         document.getElementById('pDevise').value = p.devise_principale || 'USD';
 
         document.getElementById('pNotifEmail').checked = p.notif_email === 'true';
@@ -802,6 +967,22 @@ async function loadSettings() {
 
         document.getElementById('pTheme').value = p.theme || 'light';
         applyColor(p.couleur_principale || '#1e3a8a');
+
+        // --- Paramètres de la facture ---
+        setFactureDesign(p.facture_design || 'moderne');
+        document.getElementById('pFactureTitre').value = p.facture_titre || 'FACTURE';
+        document.getElementById('pFactureEnt').checked = p.facture_afficher_entreprise !== 'false';
+        document.getElementById('pFactureSlogan').checked = p.facture_afficher_slogan !== 'false';
+        document.getElementById('pFactureAdresse').checked = p.facture_afficher_adresse !== 'false';
+        document.getElementById('pFactureTel').checked = p.facture_afficher_telephone !== 'false';
+        document.getElementById('pFactureEmail').checked = p.facture_afficher_email !== 'false';
+        document.getElementById('pFactureRccm').checked = p.facture_afficher_rccm !== 'false';
+        document.getElementById('pFactureNumDate').checked = p.facture_afficher_numero !== 'false' && p.facture_afficher_date !== 'false';
+        document.getElementById('pFactureSign').checked = p.facture_afficher_signatures !== 'false';
+        document.getElementById('pFactureMention').checked = p.facture_afficher_mention === 'true';
+        document.getElementById('pFactureMentionText').value = p.facture_mention || '';
+        if (p.facture_signature_image) setInvoiceImagePreview('pSigPreview', 'pSigPh', 'pSigData', p.facture_signature_image);
+        if (p.facture_cachet_image) setInvoiceImagePreview('pCachetPreview', 'pCachetPh', 'pCachetData', p.facture_cachet_image);
 
         if (d.user) {
             document.getElementById('pUsername').value = d.user.username || '';
@@ -822,6 +1003,7 @@ async function saveGeneral() {
         adresse: document.getElementById('pAdresse').value,
         telephone: document.getElementById('pTelephone').value,
         email: document.getElementById('pEmail').value,
+        rccm: document.getElementById('pRccm').value,
         devise_principale: document.getElementById('pDevise').value
     };
     try {
@@ -833,7 +1015,91 @@ async function saveGeneral() {
     } catch (e) { console.error(e); }
 }
 
-// ==================== SÉCURITÉ ====================
+// ==================== FACTURE ====================
+function setFactureDesign(design) {
+    document.querySelectorAll('#factureDesignPicker .design-card').forEach(card => {
+        card.classList.toggle('active', card.dataset.design === design);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('#factureDesignPicker .design-card').forEach(card => {
+        card.addEventListener('click', () => setFactureDesign(card.dataset.design));
+    });
+});
+
+function getFactureDesign() {
+    const card = document.querySelector('#factureDesignPicker .design-card.active');
+    return card ? card.dataset.design : 'moderne';
+}
+
+async function saveFacture() {
+    const payload = {
+        facture_design: getFactureDesign(),
+        facture_titre: document.getElementById('pFactureTitre').value,
+        facture_afficher_entreprise: document.getElementById('pFactureEnt').checked,
+        facture_afficher_slogan: document.getElementById('pFactureSlogan').checked,
+        facture_afficher_adresse: document.getElementById('pFactureAdresse').checked,
+        facture_afficher_telephone: document.getElementById('pFactureTel').checked,
+        facture_afficher_email: document.getElementById('pFactureEmail').checked,
+        facture_afficher_rccm: document.getElementById('pFactureRccm').checked,
+        facture_afficher_numero: document.getElementById('pFactureNumDate').checked,
+        facture_afficher_date: document.getElementById('pFactureNumDate').checked,
+        facture_afficher_signatures: document.getElementById('pFactureSign').checked,
+        facture_afficher_mention: document.getElementById('pFactureMention').checked,
+        facture_mention: document.getElementById('pFactureMentionText').value,
+        facture_signature_image: document.getElementById('pSigData').value,
+        facture_cachet_image: document.getElementById('pCachetData').value
+    };
+    try {
+        const r = await fetch('/api/settings/facture', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+        });
+        const d = await r.json();
+        showToast(d.message, d.success ? 'success' : 'danger');
+    } catch (e) { console.error(e); }
+}
+
+function loadInvoiceImage(inputId, previewId, phId, hiddenId) {
+    const file = document.getElementById(inputId).files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const maxDim = 480;
+            let w = img.width, h = img.height;
+            if (w > maxDim || h > maxDim) {
+                const ratio = Math.min(maxDim / w, maxDim / h);
+                w = Math.round(w * ratio);
+                h = Math.round(h * ratio);
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            setInvoiceImagePreview(previewId, phId, hiddenId, canvas.toDataURL('image/png'));
+        };
+        img.onerror = () => showToast('Image invalide', 'danger');
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function setInvoiceImagePreview(previewId, phId, hiddenId, dataUrl) {
+    const preview = document.getElementById(previewId);
+    const ph = document.getElementById(phId);
+    preview.src = dataUrl;
+    preview.style.display = 'block';
+    ph.style.display = 'none';
+    document.getElementById(hiddenId).value = dataUrl;
+}
+
+function removeInvoiceImage(previewId, phId, hiddenId) {
+    document.getElementById(previewId).style.display = 'none';
+    document.getElementById(phId).style.display = 'block';
+    document.getElementById(hiddenId).value = '';
+}
 function checkStrength(pwd) {
     const bar = document.getElementById('pwdStrengthBar');
     const label = document.getElementById('pwdStrengthLabel');

@@ -22,11 +22,12 @@ class Parametre(db.Model):
 
 
 DEFAUTS = {
-    'nom_entreprise': 'MotoStockIA',
+    'nom_entreprise': '#TUMIKA',
     'slogan': 'Gestion intelligente de stock & ventes',
     'adresse': '',
     'telephone': '',
     'email': '',
+    'rccm': '',
     'devise_principale': 'USD',
     'theme': 'light',
     'couleur_principale': '#1e3a8a',
@@ -46,6 +47,22 @@ DEFAUTS = {
     'smtp_mot_de_passe': '',
     'smtp_securite': 'starttls',
     'smtp_expediteur_nom': '',
+    # ===== Paramètres de la facture =====
+    'facture_design': 'moderne',
+    'facture_titre': 'FACTURE',
+    'facture_afficher_entreprise': 'true',
+    'facture_afficher_slogan': 'true',
+    'facture_afficher_adresse': 'true',
+    'facture_afficher_telephone': 'true',
+    'facture_afficher_email': 'true',
+    'facture_afficher_rccm': 'true',
+    'facture_afficher_numero': 'true',
+    'facture_afficher_date': 'true',
+    'facture_afficher_mention': 'false',
+    'facture_mention': 'TVA 16% incluse dans le prix de vente — déjà acquittée lors du dédouanement des marchandises.',
+    'facture_afficher_signatures': 'true',
+    'facture_signature_image': '',
+    'facture_cachet_image': '',
 }
 
 

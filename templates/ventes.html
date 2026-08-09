@@ -275,9 +275,63 @@
 
                 <!-- Bouton Scanner Intelligent -->
                 <div style="display: flex; gap: 12px; margin-bottom: 16px;">
-                    <button onclick="openVisionScanner()" class="btn" style="flex: 1; border-radius: 10px; font-weight: 700; font-size: 0.88rem; padding: 11px; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; border: none; box-shadow: 0 6px 14px rgba(30, 58, 138, 0.25);">
+                    <button onclick="toggleVisionScanner()" class="btn" style="flex: 1; border-radius: 10px; font-weight: 700; font-size: 0.88rem; padding: 11px; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; border: none; box-shadow: 0 6px 14px rgba(30, 58, 138, 0.25);">
                         <i class="bi bi-camera-video-fill me-1"></i> Scanner Intelligent — Webcam / Photo / OCR
                     </button>
+                </div>
+
+                <!-- Panneau Scanner intégré (s'ouvre sur la même page) -->
+                <div id="visionScannerPanel" style="display: none; margin-bottom: 16px; border: 1px solid var(--gray-200); border-radius: 14px; overflow: hidden; background: #ffffff;">
+                    <div style="padding: 12px 16px; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="font-size: 0.95rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                            <i class="bi bi-camera-video-fill"></i> Scanner Intelligent — Vision / OCR / Code-barres
+                        </div>
+                        <button onclick="toggleVisionScanner()" style="background: rgba(255,255,255,0.15); border: none; color: white; width: 28px; height: 28px; border-radius: 8px; cursor: pointer; font-size: 15px;">×</button>
+                    </div>
+
+                    <div style="padding: 14px;">
+                        <!-- Zone Webcam -->
+                        <div style="width: 100%; height: 230px; background: black; border-radius: 12px; overflow: hidden; margin-bottom: 12px; position: relative;">
+                            <video id="visionVideo" style="width: 100%; height: 100%; object-fit: cover;" autoplay playsinline muted></video>
+                            <div id="visionCameraHint" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; text-align: center; padding: 20px;">
+                                <i class="bi bi-camera" style="font-size: 2rem; margin-bottom: 8px;"></i>
+                                <div style="font-size: 0.82rem;">Caméra inactive — cliquez sur « Activer la caméra » puis capturez le code / l'étiquette du produit</div>
+                            </div>
+                            <div id="visionAutoHint" style="display: none; position: absolute; top: 10px; left: 10px; right: 10px; background: rgba(6,78,59,0.85); color: #d1fae5; font-size: 0.72rem; font-weight: 700; padding: 6px 10px; border-radius: 8px; text-align: center;"></div>
+                            <button id="visionCaptureBtn" onclick="captureVision()" style="display: none; position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: rgba(16,185,129,0.95); border: none; color: white; padding: 9px 20px; border-radius: 30px; font-weight: 800; font-size: 0.85rem; cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,0.4);">
+                                <i class="bi bi-camera-fill me-1"></i> Capturer & Identifier
+                            </button>
+                        </div>
+
+                        <!-- Choix de la caméra -->
+                        <div style="margin-bottom: 12px; text-align: left;">
+                            <label for="visionCameraSelect" style="font-size: 0.82rem; font-weight: 600; color: #555;">Caméra :</label>
+                            <select id="visionCameraSelect" onchange="restartVisionCameraIfOpen()" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #ddd; margin-top: 4px;"></select>
+                        </div>
+
+                        <!-- Diagnostic caméra -->
+                        <div id="visionCameraDiagnostic" style="display: none; margin-bottom: 12px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 10px 12px; font-size: 0.76rem; color: #475569; text-align: left; line-height: 1.7;"></div>
+
+                        <!-- Actions -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+                            <button class="btn btn-outline-primary" onclick="toggleVisionCamera()" id="visionCameraBtn" style="border-radius: 10px; font-weight: 700; font-size: 0.85rem;">
+                                <i class="bi bi-camera-video me-1"></i> Activer la caméra
+                            </button>
+                            <label class="btn btn-outline-success" style="border-radius: 10px; font-weight: 700; font-size: 0.85rem; margin: 0; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                                <i class="bi bi-image me-1"></i> Photo / Fichier
+                                <input type="file" id="visionFileInput" accept="image/*" capture="environment" style="display: none;" onchange="analyseVisionFile(this)">
+                            </label>
+                        </div>
+
+                        <!-- Saisie manuelle code / référence -->
+                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-bottom: 12px;">
+                            <input type="text" id="visionTextInput" class="form-control" placeholder="Ou saisissez un code-barres / une référence..." style="border-radius: 10px;" onkeydown="if(event.key==='Enter'){identifierVisionTexte();}">
+                            <button class="btn btn-primary" onclick="identifierVisionTexte()" style="border-radius: 10px; font-weight: 700;"><i class="bi bi-upc-scan me-1"></i> Identifier</button>
+                        </div>
+
+                        <!-- Résultat de l'identification -->
+                        <div id="visionResult"></div>
+                    </div>
                 </div>
 
                 <!-- Input Recherche -->
@@ -338,42 +392,39 @@
                 </div>
 
                 <!-- Mode de Paiement & Total -->
-                <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; border-radius: 14px; padding: 18px;">
-                    <div class="mb-3">
-                        <label class="form-label" style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase; opacity: 0.8;">Mode de Règlement</label>
-                        <div style="display: flex; gap: 12px;">
-                            <label style="flex: 1; background: rgba(255,255,255,0.15); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                                <input type="radio" name="paymentMethod" value="cash" checked onchange="document.getElementById('dueDateGroup').style.display='none'">
-                                <span>Espèces</span>
-                            </label>
-                            <label style="flex: 1; background: rgba(255,255,255,0.15); padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-                                <input type="radio" name="paymentMethod" value="credit" onchange="document.getElementById('dueDateGroup').style.display='block'">
-                                <span>Crédit / Dette</span>
-                            </label>
-                        </div>
+                <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; border-radius: 12px; padding: 12px 16px;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <label style="flex: 1; background: rgba(255,255,255,0.15); padding: 5px 10px; border-radius: 7px; cursor: pointer; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 5px;">
+                            <input type="radio" name="paymentMethod" value="cash" checked onchange="document.getElementById('dueDateGroup').style.display='none'">
+                            <span>Espèces</span>
+                        </label>
+                        <label style="flex: 1; background: rgba(255,255,255,0.15); padding: 5px 10px; border-radius: 7px; cursor: pointer; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 5px;">
+                            <input type="radio" name="paymentMethod" value="credit" onchange="document.getElementById('dueDateGroup').style.display='block'">
+                            <span>Crédit</span>
+                        </label>
                     </div>
 
-                    <div id="dueDateGroup" class="mb-3" style="display: none;">
-                        <label class="form-label" style="font-size: 0.78rem; font-weight: 700; color: #fde68a;">Date d'échéance du crédit</label>
-                        <input type="date" id="paymentDueDate" class="form-control form-control-sm" style="border-radius: 8px;">
+                    <div id="dueDateGroup" style="margin-bottom: 8px; display: none;">
+                        <label class="form-label" style="font-size: 0.72rem; font-weight: 700; color: #fde68a;">Date d'échéance du crédit</label>
+                        <input type="date" id="paymentDueDate" class="form-control form-control-sm" style="border-radius: 7px;">
                     </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem; margin-bottom: 4px; opacity: 0.85;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 2px; opacity: 0.85;">
                         <span>Sous-total:</span>
                         <span id="subtotal">0 FC</span>
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem; margin-bottom: 10px; opacity: 0.85;">
-                        <span>TVA (18% inclus):</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 6px; opacity: 0.85;">
+                        <span>TVA (16% incluse):</span>
                         <span id="tax">0 FC</span>
                     </div>
 
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 1.35rem; font-weight: 800; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; font-weight: 800; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
                         <span>TOTAL:</span>
                         <span id="total" style="color: #6ee7b7;">0 FC</span>
                     </div>
                 </div>
 
-                <button class="btn btn-success" onclick="saveSale()" style="width: 100%; margin-top: 14px; padding: 14px; border-radius: 12px; font-weight: 800; font-size: 1.05rem; box-shadow: 0 8px 16px rgba(16,185,129,0.3);">
+                <button class="btn btn-success" onclick="saveSale()" style="width: 100%; margin-top: 12px; padding: 12px; border-radius: 10px; font-weight: 800; font-size: 1rem; box-shadow: 0 8px 16px rgba(16,185,129,0.3);">
                     <i class="bi bi-check-circle-fill me-1"></i> Valider & Imprimer Facture
                 </button>
             </div>
@@ -447,61 +498,6 @@
         </div>
     </div>
 </div>
-
-<!-- Modal Scanner Intelligent (Vision / OCR / Code-barres / Photo) -->
-<div id="visionScannerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; justify-content: center; align-items: center; padding: 20px;">
-    <div style="background: white; border-radius: 20px; width: 95%; max-width: 640px; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3);">
-        <div style="padding: 16px 24px; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
-                <i class="bi bi-camera-video-fill"></i> Scanner Intelligent — Vision / OCR / Code-barres
-            </div>
-            <button onclick="closeVisionScanner()" style="background: rgba(255,255,255,0.15); border: none; color: white; width: 32px; height: 32px; border-radius: 8px; cursor: pointer;">×</button>
-        </div>
-
-        <div style="flex: 1; overflow-y: auto; padding: 20px;">
-            <!-- Zone Webcam -->
-            <div style="width: 100%; height: 260px; background: black; border-radius: 12px; overflow: hidden; margin-bottom: 14px; position: relative;">
-                <video id="visionVideo" style="width: 100%; height: 100%; object-fit: cover;" autoplay playsinline muted></video>
-                <div id="visionCameraHint" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; text-align: center; padding: 20px;">
-                    <i class="bi bi-camera" style="font-size: 2.2rem; margin-bottom: 8px;"></i>
-                    <div style="font-size: 0.85rem;">Caméra inactive — cliquez sur « Activer la caméra » puis capturez le code / l'étiquette du produit</div>
-                </div>
-                <button id="visionCaptureBtn" onclick="captureVision()" style="display: none; position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); background: rgba(16,185,129,0.95); border: none; color: white; padding: 10px 22px; border-radius: 30px; font-weight: 800; font-size: 0.9rem; cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,0.4);">
-                    <i class="bi bi-camera-fill me-1"></i> Capturer & Identifier
-                </button>
-            </div>
-
-            <!-- Choix de la caméra -->
-            <div style="margin-bottom: 12px; text-align: left;">
-                <label for="visionCameraSelect" style="font-size: 0.85rem; font-weight: 600; color: #555;">Caméra :</label>
-                <select id="visionCameraSelect" onchange="restartVisionCameraIfOpen()" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #ddd; margin-top: 4px;"></select>
-            </div>
-
-            <!-- Diagnostic caméra -->
-            <div id="visionCameraDiagnostic" style="display: none; margin-bottom: 12px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 10px 12px; font-size: 0.78rem; color: #475569; text-align: left; line-height: 1.7;"></div>
-
-            <!-- Actions -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-                <button class="btn btn-outline-primary" onclick="toggleVisionCamera()" id="visionCameraBtn" style="border-radius: 10px; font-weight: 700; font-size: 0.88rem;">
-                    <i class="bi bi-camera-video me-1"></i> Activer la caméra
-                </button>
-                <label class="btn btn-outline-success" style="border-radius: 10px; font-weight: 700; font-size: 0.88rem; margin: 0; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                    <i class="bi bi-image me-1"></i> Photo / Fichier
-                    <input type="file" id="visionFileInput" accept="image/*" capture="environment" style="display: none;" onchange="analyseVisionFile(this)">
-                </label>
-            </div>
-
-            <!-- Saisie manuelle code / référence -->
-            <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-bottom: 16px;">
-                <input type="text" id="visionTextInput" class="form-control" placeholder="Ou saisissez un code-barres / une référence..." style="border-radius: 10px;" onkeydown="if(event.key==='Enter'){identifierVisionTexte();}">
-                <button class="btn btn-primary" onclick="identifierVisionTexte()" style="border-radius: 10px; font-weight: 700;"><i class="bi bi-upc-scan me-1"></i> Identifier</button>
-            </div>
-
-            <!-- Résultat de l'identification -->
-            <div id="visionResult"></div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
@@ -515,6 +511,12 @@ let editCart = [];
 let pendingCreditPaymentConfirm = {};
 let visionStream = null;
 let lastVisionResult = null;
+let visionDetector = null;
+let visionScanTimer = null;
+let visionScanning = false;
+let lastVisionCode = null;
+let lastVisionCodeTime = 0;
+let visionResultCode = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     loadSales();
@@ -891,6 +893,7 @@ function openSaleModal() {
 }
 
 function closeSaleModal() {
+    if (typeof closeVisionScanner === 'function') closeVisionScanner();
     document.getElementById('saleModal').style.display = 'none';
 }
 
@@ -944,7 +947,117 @@ async function saveSale() {
     }
 }
 
-// 7. Impression de la Facture Corporate ("Facture et Entêtés")
+// 7. Impression de la Facture ("Facture et Entêtés")
+const invoiceStyles = `
+    .invoice-sheet { background: #ffffff; max-width: 760px; margin: 0 auto; padding: 36px 34px; border-radius: 6px; box-shadow: 0 2px 10px rgba(15,23,42,0.06); }
+    .inv-sep { margin: 0 4px; opacity: 0.6; }
+
+    /* ============ DESIGN MODERNE ============ */
+    .invoice-moderne { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #0f172a; }
+    .invoice-moderne .inv-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 3px solid #0f172a; padding-bottom: 16px; margin-bottom: 20px; }
+    .invoice-moderne .inv-brand { font-size: 1.6rem; font-weight: 900; letter-spacing: -0.5px; color: #0f172a; }
+    .invoice-moderne .inv-brand-sub { font-size: 0.88rem; font-weight: 700; color: #1e3a8a; margin-top: 1px; }
+    .invoice-moderne .inv-slogan { font-size: 0.78rem; color: #475569; font-style: italic; }
+    .invoice-moderne .inv-coord { font-size: 0.78rem; color: #475569; margin-top: 4px; max-width: 360px; }
+    .invoice-moderne .inv-header-right { text-align: right; }
+    .invoice-moderne .inv-title { font-size: 1.25rem; font-weight: 900; color: #0f172a; letter-spacing: 1px; text-transform: uppercase; }
+    .invoice-moderne .inv-subtitle { font-size: 0.85rem; color: #334155; font-weight: 700; margin-top: 2px; }
+    .invoice-moderne .inv-meta { font-size: 0.78rem; color: #475569; }
+    .invoice-moderne .inv-block { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; font-size: 0.85rem; }
+    .invoice-moderne .inv-block-right { text-align: right; }
+    .invoice-moderne .inv-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
+    .invoice-moderne .inv-client { font-weight: 800; color: #0f172a; }
+    .invoice-moderne .inv-pay { font-weight: 700; color: #059669; }
+    .invoice-moderne table.inv-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 0.85rem; }
+    .invoice-moderne table.inv-table th { padding: 8px 10px; text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #334155; border-bottom: 2px solid #0f172a; }
+    .invoice-moderne table.inv-table .inv-th-num { text-align: right; }
+    .invoice-moderne table.inv-table td { padding: 8px 10px; border-bottom: 1px solid #e2e8f0; }
+    .invoice-moderne table.inv-table .inv-cell-name { font-weight: 600; color: #1e293b; }
+    .invoice-moderne table.inv-table .inv-cell-num { text-align: right; color: #334155; }
+    .invoice-moderne table.inv-table .inv-cell-total { font-weight: 700; color: #0f172a; }
+    .invoice-moderne .inv-totals { display: flex; justify-content: flex-end; margin-top: 6px; }
+    .invoice-moderne .inv-total-box { min-width: 280px; }
+    .invoice-moderne .inv-total-line { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 2px solid #0f172a; font-weight: 900; font-size: 1.05rem; color: #0f172a; }
+    .invoice-moderne .inv-total-usd { text-align: right; font-size: 0.8rem; color: #059669; font-weight: 700; }
+    .invoice-moderne .inv-note { font-size: 0.72rem; color: #94a3b8; margin-top: 16px; text-align: center; }
+    .invoice-moderne .inv-sign { display: flex; justify-content: space-between; margin-top: 36px; font-size: 0.8rem; color: #475569; }
+    .invoice-moderne .inv-sign-box { text-align: center; width: 40%; }
+    .invoice-moderne .inv-sign-img-wrap { height: 58px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+    .invoice-moderne .inv-sign-img { max-height: 52px; max-width: 130px; }
+    .invoice-moderne .inv-sign-placeholder { margin-bottom: 46px; }
+    .invoice-moderne .inv-sign-line { border-top: 1px solid #cbd5e1; padding-top: 6px; font-size: 0.72rem; color: #94a3b8; }
+
+    /* ============ DESIGN CLASSIQUE ============ */
+    .invoice-classique { font-family: Georgia, 'Times New Roman', serif; color: #1f2937; }
+    .invoice-classique .inv-header { text-align: center; border: 2px double #1f2937; padding: 18px 16px; margin-bottom: 22px; }
+    .invoice-classique .inv-header-left, .invoice-classique .inv-header-right { width: 100%; }
+    .invoice-classique .inv-brand { font-size: 1.7rem; font-weight: 700; letter-spacing: 2px; }
+    .invoice-classique .inv-brand-sub { font-size: 0.9rem; font-weight: 700; }
+    .invoice-classique .inv-slogan { font-size: 0.8rem; font-style: italic; color: #374151; }
+    .invoice-classique .inv-coord { font-size: 0.78rem; color: #374151; margin-top: 4px; }
+    .invoice-classique .inv-title { font-size: 1.4rem; font-weight: 700; letter-spacing: 6px; text-transform: uppercase; margin-top: 10px; border-top: 1px solid #1f2937; padding-top: 8px; }
+    .invoice-classique .inv-subtitle { font-size: 0.9rem; color: #374151; }
+    .invoice-classique .inv-meta { font-size: 0.78rem; color: #374151; }
+    .invoice-classique .inv-block { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; font-size: 0.88rem; }
+    .invoice-classique .inv-block-right { text-align: right; }
+    .invoice-classique .inv-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; color: #1f2937; border-bottom: 1px solid #1f2937; display: inline-block; margin-bottom: 6px; text-transform: uppercase; }
+    .invoice-classique .inv-client { font-weight: 700; }
+    .invoice-classique .inv-pay { font-weight: 700; color: #065f46; }
+    .invoice-classique table.inv-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 0.88rem; }
+    .invoice-classique table.inv-table th { padding: 9px 10px; text-align: left; font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; background: #f1f5f9; border: 1px solid #cbd5e1; }
+    .invoice-classique table.inv-table .inv-th-num { text-align: right; }
+    .invoice-classique table.inv-table td { padding: 9px 10px; border: 1px solid #cbd5e1; }
+    .invoice-classique table.inv-table .inv-cell-name { font-weight: 600; }
+    .invoice-classique table.inv-table .inv-cell-num { text-align: right; }
+    .invoice-classique table.inv-table .inv-cell-total { font-weight: 700; }
+    .invoice-classique .inv-totals { display: flex; justify-content: flex-end; }
+    .invoice-classique .inv-total-box { min-width: 280px; border: 1px solid #1f2937; padding: 8px 14px; }
+    .invoice-classique .inv-total-line { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1rem; }
+    .invoice-classique .inv-total-usd { text-align: right; font-size: 0.82rem; color: #065f46; font-weight: 700; }
+    .invoice-classique .inv-note { font-size: 0.75rem; font-style: italic; color: #374151; margin-top: 16px; text-align: center; }
+    .invoice-classique .inv-sign { display: flex; justify-content: space-between; margin-top: 40px; font-size: 0.85rem; }
+    .invoice-classique .inv-sign-box { text-align: center; width: 40%; }
+    .invoice-classique .inv-sign-img-wrap { height: 58px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+    .invoice-classique .inv-sign-img { max-height: 52px; max-width: 130px; }
+    .invoice-classique .inv-sign-placeholder { margin-bottom: 46px; }
+    .invoice-classique .inv-sign-line { border-top: 1px solid #1f2937; padding-top: 6px; font-size: 0.75rem; }
+
+    /* ============ DESIGN MINIMAL ============ */
+    .invoice-minimal { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #111827; }
+    .invoice-minimal .inv-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 26px; }
+    .invoice-minimal .inv-brand { font-size: 1.3rem; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; }
+    .invoice-minimal .inv-brand-sub { font-size: 0.85rem; font-weight: 600; color: #374151; margin-top: 2px; }
+    .invoice-minimal .inv-slogan { font-size: 0.78rem; color: #6b7280; }
+    .invoice-minimal .inv-coord { font-size: 0.76rem; color: #6b7280; margin-top: 4px; max-width: 360px; }
+    .invoice-minimal .inv-header-right { text-align: right; }
+    .invoice-minimal .inv-title { font-size: 1.7rem; font-weight: 300; letter-spacing: 2px; text-transform: uppercase; color: #111827; }
+    .invoice-minimal .inv-subtitle { font-size: 0.85rem; color: #374151; font-weight: 600; }
+    .invoice-minimal .inv-meta { font-size: 0.78rem; color: #6b7280; }
+    .invoice-minimal .inv-block { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 22px; font-size: 0.85rem; }
+    .invoice-minimal .inv-block-right { text-align: right; }
+    .invoice-minimal .inv-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: #9ca3af; margin-bottom: 4px; }
+    .invoice-minimal .inv-client { font-weight: 700; color: #111827; }
+    .invoice-minimal .inv-pay { font-weight: 700; color: #059669; }
+    .invoice-minimal table.inv-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.85rem; }
+    .invoice-minimal table.inv-table th { padding: 8px; text-align: left; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #9ca3af; border-bottom: 1px solid #e5e7eb; }
+    .invoice-minimal table.inv-table .inv-th-num { text-align: right; }
+    .invoice-minimal table.inv-table td { padding: 8px; border-bottom: 1px solid #f3f4f6; }
+    .invoice-minimal table.inv-table .inv-cell-name { color: #374151; }
+    .invoice-minimal table.inv-table .inv-cell-num { text-align: right; color: #374151; }
+    .invoice-minimal table.inv-table .inv-cell-total { font-weight: 800; color: #111827; }
+    .invoice-minimal .inv-totals { display: flex; justify-content: flex-end; }
+    .invoice-minimal .inv-total-box { min-width: 280px; }
+    .invoice-minimal .inv-total-line { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid #111827; font-weight: 800; font-size: 1rem; }
+    .invoice-minimal .inv-total-usd { text-align: right; font-size: 0.8rem; color: #059669; font-weight: 700; }
+    .invoice-minimal .inv-note { font-size: 0.72rem; color: #9ca3af; margin-top: 16px; }
+    .invoice-minimal .inv-sign { display: flex; justify-content: space-between; margin-top: 44px; font-size: 0.8rem; }
+    .invoice-minimal .inv-sign-box { text-align: center; width: 40%; }
+    .invoice-minimal .inv-sign-img-wrap { height: 58px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+    .invoice-minimal .inv-sign-img { max-height: 52px; max-width: 130px; }
+    .invoice-minimal .inv-sign-placeholder { margin-bottom: 46px; }
+    .invoice-minimal .inv-sign-line { border-top: 1px solid #d1d5db; padding-top: 6px; font-size: 0.72rem; color: #9ca3af; }
+`;
+
 async function generateInvoice(saleId) {
     const modal = document.getElementById('invoiceModal');
     modal.style.display = 'flex';
@@ -953,6 +1066,13 @@ async function generateInvoice(saleId) {
     content.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--gray-500);"><i class="bi bi-arrow-repeat spin" style="font-size: 2.5rem; display: block; margin-bottom: 12px;"></i><p>Génération de la facture...</p></div>';
 
     try {
+        let entreprise = {};
+        try {
+            const sr = await fetch('/api/settings');
+            const sd = await sr.json();
+            entreprise = sd.parametres || {};
+        } catch (e) { /* valeurs par défaut ci-dessous */ }
+
         const response = await fetch('/api/ventes/' + saleId);
         const data = await response.json();
         const sale = data.vente;
@@ -964,101 +1084,122 @@ async function generateInvoice(saleId) {
         let totalFC = isUSD ? (sale.montant * rate) : sale.montant;
         let totalUSD = isUSD ? sale.montant : (sale.montant / rate);
 
-        let html = `
-            <div class="invoice-container-corporate">
-                <!-- En-tête Corporate -->
-                <div class="invoice-header-corporate">
-                    <div>
-                        <div style="font-size: 1.6rem; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">#TUMIKA</div>
-                        <div style="font-size: 0.95rem; font-weight: 700; color: #1e3a8a;">MOTOSTOCKIA — RDC</div>
-                        <div style="font-size: 0.82rem; color: #64748b; margin-top: 4px;">
-                            Vente de pièces & accessoires Moto<br>
-                            Kinshasa / Lubumbashi, République Démocratique du Congo<br>
-                            Tél: +243 810 000 000 | Email: contact@tumika-motostock.cd
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="display: inline-block; background: #1e3a8a; color: white; padding: 6px 14px; border-radius: 8px; font-weight: 800; font-size: 0.95rem;">
-                            FACTURE N° #${sale.id}
-                        </div>
-                        <div style="font-size: 0.85rem; color: #64748b; margin-top: 8px;">
-                            Date: <strong>${dateFormatted}</strong>
-                        </div>
-                    </div>
-                </div>
+        const design = (entreprise.facture_design || 'moderne');
+        const nomEnt = (entreprise.nom_entreprise || 'MotoStockIA').trim();
+        const slogan = (entreprise.slogan || '').trim();
+        const adresse = (entreprise.adresse || '').trim();
+        const rccm = (entreprise.rccm || '').trim();
+        const tel = (entreprise.telephone || '').trim();
+        const email = (entreprise.email || '').trim();
+        const titre = (entreprise.facture_titre || 'FACTURE').trim();
 
-                <!-- Client & Paiement -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: #f1f5f9; padding: 18px; border-radius: 12px; margin-bottom: 24px;">
-                    <div>
-                        <div style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: #64748b;">Facturé à:</div>
-                        <div style="font-size: 1.05rem; font-weight: 800; color: #0f172a;">${escapeHtml(sale.client || 'Client comptant')}</div>
-                        <div style="font-size: 0.88rem; color: #475569;">Tél: ${escapeHtml(sale.telephone || 'Non spécifié')}</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 0.78rem; text-transform: uppercase; font-weight: 700; color: #64748b;">Statut & Mode de Règlement:</div>
-                        <div style="font-size: 1rem; font-weight: 700; color: #059669;">${getPaymentMethodLabel(sale.mode_paiement)}</div>
-                        <div style="font-size: 0.85rem; color: #475569;">Devise principale: <strong>${sale.devise || 'CDF'}</strong></div>
-                    </div>
-                </div>
+        const showEnt = entreprise.facture_afficher_entreprise !== 'false';
+        const showSlogan = entreprise.facture_afficher_slogan !== 'false';
+        const showAdresse = entreprise.facture_afficher_adresse !== 'false';
+        const showTel = entreprise.facture_afficher_telephone !== 'false';
+        const showEmail = entreprise.facture_afficher_email !== 'false';
+        const showRccm = entreprise.facture_afficher_rccm !== 'false';
+        const showNumero = entreprise.facture_afficher_numero !== 'false';
+        const showDate = entreprise.facture_afficher_date !== 'false';
+        const showSignatures = entreprise.facture_afficher_signatures !== 'false';
+        const showMention = entreprise.facture_afficher_mention === 'true';
+        const mention = (entreprise.facture_mention || '').trim();
+        const sigImage = entreprise.facture_signature_image || '';
+        const cachetImage = entreprise.facture_cachet_image || '';
 
-                <!-- Tableau des Articles -->
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
-                    <thead>
-                        <tr style="background: #0f172a; color: white; font-size: 0.85rem; text-transform: uppercase;">
-                            <th style="padding: 12px 16px; text-align: left; border-radius: 8px 0 0 8px;">Désignation / Produit</th>
-                            <th style="padding: 12px 16px; text-align: center;">Qté</th>
-                            <th style="padding: 12px 16px; text-align: right;">Prix Unit.</th>
-                            <th style="padding: 12px 16px; text-align: right; border-radius: 0 8px 8px 0;">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
+        let coordonnees = [];
+        if (showAdresse && adresse) coordonnees.push(escapeHtml(adresse));
+        if (showRccm && rccm) coordonnees.push('RCCM: ' + escapeHtml(rccm));
+        if (showTel && tel) coordonnees.push('Tél: ' + escapeHtml(tel));
+        if (showEmail && email) coordonnees.push(escapeHtml(email));
+
+        let html = '<style>' + invoiceStyles + '</style>';
+        html += '<div class="invoice-sheet invoice-' + design + '">';
+
+        // En-tête de l'entreprise
+        html += '<div class="inv-header"><div class="inv-header-left">';
+        if (showEnt) {
+            html += '<div class="inv-brand">#TUMIKA</div>';
+            if (nomEnt.toUpperCase() !== '#TUMIKA') {
+                html += '<div class="inv-brand-sub">' + escapeHtml(nomEnt) + '</div>';
+            }
+            if (showSlogan && slogan) {
+                html += '<div class="inv-slogan">' + escapeHtml(slogan) + '</div>';
+            }
+            html += '<div class="inv-coord">' + (coordonnees.join('<span class="inv-sep"> | </span>') || 'République Démocratique du Congo') + '</div>';
+        } else {
+            html += '<div class="inv-coord">République Démocratique du Congo</div>';
+        }
+        html += '</div><div class="inv-header-right">';
+        html += '<div class="inv-title">' + escapeHtml(titre) + '</div>';
+        if (showNumero) html += '<div class="inv-subtitle">N° ' + sale.id + '</div>';
+        if (showDate) html += '<div class="inv-meta">Date: <strong>' + dateFormatted + '</strong></div>';
+        html += '</div></div>';
+
+        // Client & mode de règlement
+        html += '<div class="inv-block">';
+        html += '<div class="inv-block-left"><div class="inv-label">Facturé à</div>';
+        html += '<div class="inv-client">' + escapeHtml(sale.client || 'Client comptant') + '</div>';
+        html += '<div class="inv-meta">Tél: ' + escapeHtml(sale.telephone || '—') + '</div></div>';
+        html += '<div class="inv-block-right"><div class="inv-label">Mode de règlement</div>';
+        html += '<div class="inv-pay">' + getPaymentMethodLabel(sale.mode_paiement) + '</div>';
+        html += '<div class="inv-meta">Devise: ' + (sale.devise || 'CDF') + '</div></div>';
+        html += '</div>';
+
+        // Articles
+        html += '<table class="inv-table"><thead><tr>';
+        html += '<th>Désignation</th><th class="inv-th-num">Qté</th><th class="inv-th-num">P.U.</th><th class="inv-th-num">Total</th>';
+        html += '</tr></thead><tbody>';
 
         (sale.produits || []).forEach(p => {
             const unitPrice = p.prix_vente;
             const lineTotal = p.prix_vente * p.quantite;
             const lineDisplay = (sale.devise === 'USD') ? `$ ${lineTotal}` : `${formatCurrency(lineTotal, 'CDF')}`;
-
-            html += `
-                <tr style="border-bottom: 1px solid #e2e8f0; font-size: 0.9rem;">
-                    <td style="padding: 12px 16px; font-weight: 600; color: #1e293b;">${escapeHtml(p.nom)}</td>
-                    <td style="padding: 12px 16px; text-align: center; font-weight: 700;">${p.quantite}</td>
-                    <td style="padding: 12px 16px; text-align: right;">${(sale.devise === 'USD') ? '$ ' + unitPrice : formatCurrency(unitPrice, 'CDF')}</td>
-                    <td style="padding: 12px 16px; text-align: right; font-weight: 700;">${lineDisplay}</td>
-                </tr>
-            `;
+            const unitDisplay = (sale.devise === 'USD') ? '$ ' + unitPrice : formatCurrency(unitPrice, 'CDF');
+            html += '<tr>';
+            html += '<td class="inv-cell-name">' + escapeHtml(p.nom) + '</td>';
+            html += '<td class="inv-cell-num">' + p.quantite + '</td>';
+            html += '<td class="inv-cell-num">' + unitDisplay + '</td>';
+            html += '<td class="inv-cell-num inv-cell-total">' + lineDisplay + '</td>';
+            html += '</tr>';
         });
 
-        html += `
-                    </tbody>
-                </table>
+        html += '</tbody></table>';
 
-                <!-- Récapitulatif Totaux Bi-Devises -->
-                <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 2px solid #e2e8f0; padding-top: 20px;">
-                    <div>
-                        <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 4px;">CONTRÔLE & AUTHENTICITÉ</div>
-                        <div style="font-family: monospace; font-weight: bold; background: #e2e8f0; padding: 6px 12px; border-radius: 6px; font-size: 0.9rem; display: inline-block;">
-                            BC-2026-SALE-${sale.id}
-                        </div>
-                    </div>
+        // Total (seul le total des prix des produits est affiché)
+        html += '<div class="inv-totals"><div class="inv-total-box">';
+        html += '<div class="inv-total-line"><span>Total</span><strong>' + formatCurrency(totalFC, 'CDF') + '</strong></div>';
+        html += '<div class="inv-total-usd">$ ' + totalUSD.toFixed(2) + '</div>';
+        html += '</div></div>';
 
-                    <div style="text-align: right; min-width: 260px;">
-                        <div style="font-size: 0.9rem; color: #64748b; margin-bottom: 6px;">Sous-total HT: <strong>${formatCurrency(sale.montant / 1.18, sale.devise)}</strong></div>
-                        <div style="font-size: 0.9rem; color: #64748b; margin-bottom: 10px;">TVA (18% inclus): <strong>${formatCurrency(sale.montant - (sale.montant / 1.18), sale.devise)}</strong></div>
-                        <div style="font-size: 1.3rem; font-weight: 900; color: #1e3a8a; background: #e0e7ff; padding: 10px 16px; border-radius: 10px;">
-                            NET À PAYER :<br>
-                            <span style="color: #047857;">${formatCurrency(totalFC, 'CDF')}</span> / <span style="color: #059669;">$ ${totalUSD.toFixed(2)}</span>
-                        </div>
-                    </div>
-                </div>
+        // Mention personnalisée
+        if (showMention && mention) {
+            html += '<div class="inv-note">' + escapeHtml(mention) + '</div>';
+        }
 
-                <!-- Signatures -->
-                <div style="display: flex; justify-content: space-between; margin-top: 40px; padding-top: 20px; border-top: 1px dashed #cbd5e1; font-size: 0.82rem; color: #64748b;">
-                    <div>Signature Client:</div>
-                    <div>Visa Caissier / Vendeur #TUMIKA</div>
-                </div>
-            </div>
-        `;
+        // Signatures & cachet
+        if (showSignatures) {
+            html += '<div class="inv-sign">';
+            html += '<div class="inv-sign-box">';
+            if (sigImage) {
+                html += '<div class="inv-sign-img-wrap"><img class="inv-sign-img" src="' + sigImage + '" alt="Signature"></div>';
+            } else {
+                html += '<div class="inv-sign-placeholder">Signature du client</div>';
+            }
+            html += '<div class="inv-sign-line">' + escapeHtml(sale.client || 'Client') + '</div>';
+            html += '</div>';
+            html += '<div class="inv-sign-box">';
+            if (cachetImage) {
+                html += '<div class="inv-sign-img-wrap"><img class="inv-sign-img" src="' + cachetImage + '" alt="Cachet"></div>';
+            } else {
+                html += '<div class="inv-sign-placeholder">Visa vendeur / caissier</div>';
+            }
+            html += '<div class="inv-sign-line">' + escapeHtml(nomEnt) + '</div>';
+            html += '</div>';
+            html += '</div>';
+        }
+
+        html += '</div>';
 
         content.innerHTML = html;
     } catch (error) {
@@ -1089,8 +1230,13 @@ function printInvoice() {
             <head>
                 <title>Facture #TUMIKA</title>
                 <style>
-                    body { font-family: system-ui, -apple-system, sans-serif; padding: 20px; background: white; }
-                    @media print { body { padding: 0; } }
+                    * { box-sizing: border-box; }
+                    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; margin: 0; padding: 0; background: white; color: #0f172a; }
+                    .invoice-sheet { max-width: 720px; margin: 0 auto; padding: 36px 32px; }
+                    @media print {
+                        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        .invoice-sheet { box-shadow: none; border-radius: 0; padding: 0; }
+                    }
                 </style>
             </head>
             <body>${content}</body>
@@ -1153,10 +1299,12 @@ async function deleteSale(saleId) {
 
 // Scanners — Identification Intelligente (Vision / OCR / Code-barres / Photo)
 function openVisionScanner() {
-    const modal = document.getElementById('visionScannerModal');
-    modal.style.display = 'flex';
+    const panel = document.getElementById('visionScannerPanel');
+    panel.style.display = 'block';
     document.getElementById('visionResult').innerHTML = '';
     document.getElementById('visionTextInput').value = '';
+    lastVisionResult = null;
+    visionResultCode = null;
 
     // Diagnostic : cause réelle du blocage
     const diag = document.getElementById('visionCameraDiagnostic');
@@ -1180,7 +1328,16 @@ function openVisionScanner() {
 
 function closeVisionScanner() {
     stopVisionCamera();
-    document.getElementById('visionScannerModal').style.display = 'none';
+    document.getElementById('visionScannerPanel').style.display = 'none';
+}
+
+function toggleVisionScanner() {
+    const panel = document.getElementById('visionScannerPanel');
+    if (panel.style.display !== 'none') {
+        closeVisionScanner();
+    } else {
+        openVisionScanner();
+    }
 }
 
 function toggleVisionCamera() {
@@ -1205,6 +1362,24 @@ async function startVisionCamera() {
         hint.style.display = 'none';
         captureBtn.style.display = 'block';
         btn.innerHTML = '<i class="bi bi-camera-video-off me-1"></i> Arrêter la caméra';
+
+        // Détection automatique continue des codes-barres / QR (si supportée)
+        if (!visionDetector) {
+            visionDetector = await initVisionDetector();
+        }
+        const autoHint = document.getElementById('visionAutoHint');
+        if (visionDetector) {
+            if (autoHint) {
+                autoHint.style.display = 'block';
+                autoHint.innerHTML = '<i class="bi bi-qr-code-scan"></i> Détection automatique active : pointez le code-barres / QR du produit';
+            }
+            startVisionScanLoop();
+        } else {
+            if (autoHint) {
+                autoHint.style.display = 'block';
+                autoHint.innerHTML = '<i class="bi bi-lightbulb"></i> Détection auto indisponible — utilisez « Capturer & Identifier »';
+            }
+        }
     } catch (err) {
         if (typeof showToast === 'function') showToast(window.cameraErrorMessage(err), 'warning', 6000);
         hint.style.display = 'flex';
@@ -1220,13 +1395,14 @@ async function requestVisionCameraStream() {
 }
 
 function restartVisionCameraIfOpen() {
-    if (visionStream && document.getElementById('visionScannerModal').style.display === 'flex') {
+    if (visionStream && document.getElementById('visionScannerPanel').style.display !== 'none') {
         stopVisionCamera();
         startVisionCamera();
     }
 }
 
 function stopVisionCamera() {
+    stopVisionScanLoop();
     if (visionStream) {
         visionStream.getTracks().forEach(t => t.stop());
         visionStream = null;
@@ -1239,6 +1415,66 @@ function stopVisionCamera() {
     if (captureBtn) captureBtn.style.display = 'none';
     const btn = document.getElementById('visionCameraBtn');
     if (btn) btn.innerHTML = '<i class="bi bi-camera-video me-1"></i> Activer la caméra';
+    const autoHint = document.getElementById('visionAutoHint');
+    if (autoHint) autoHint.style.display = 'none';
+    lastVisionCode = null;
+    lastVisionCodeTime = 0;
+}
+
+// ===== Détection automatique continue (BarcodeDetector) =====
+async function initVisionDetector() {
+    try {
+        if (!('BarcodeDetector' in window)) return null;
+        return new BarcodeDetector({
+            formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'ean_8', 'upc_a', 'upc_e', 'codabar', 'itf', 'data_matrix']
+        });
+    } catch (e) {
+        try { return new BarcodeDetector(); } catch (e2) { return null; }
+    }
+}
+
+function startVisionScanLoop() {
+    if (visionScanTimer || !visionDetector || visionScanning) return;
+    visionScanning = true;
+    const step = async () => {
+        if (!visionScanning) return;
+        if (!visionStream) {
+            visionScanning = false;
+            return;
+        }
+        const video = document.getElementById('visionVideo');
+        if (video && video.videoWidth) {
+            try {
+                const codes = await visionDetector.detect(video);
+                if (codes && codes.length) {
+                    const value = (codes[0].rawValue || '').trim();
+                    if (value && (value !== lastVisionCode || (Date.now() - lastVisionCodeTime) > 2500)) {
+                        lastVisionCode = value;
+                        lastVisionCodeTime = Date.now();
+                        handleVisionBarcode(value);
+                    }
+                }
+            } catch (e) { /* erreur de détection ignorée (mode manuel) */ }
+        }
+        if (visionScanning) visionScanTimer = setTimeout(step, 400);
+    };
+    step();
+}
+
+function stopVisionScanLoop() {
+    visionScanning = false;
+    if (visionScanTimer) {
+        clearTimeout(visionScanTimer);
+        visionScanTimer = null;
+    }
+}
+
+function handleVisionBarcode(value) {
+    if (visionResultCode === value) return;
+    visionResultCode = value;
+    const container = document.getElementById('visionResult');
+    container.innerHTML = '<div style="text-align:center;padding:14px;color:var(--gray-500);font-size:0.85rem;"><div class="spinner-border spinner-border-sm text-primary"></div> Code détecté : <strong>' + escapeHtml(value) + '</strong> — identification en cours...</div>';
+    identifierVisionTexte(value, true);
 }
 
 async function captureVision() {
@@ -1267,6 +1503,7 @@ async function analyseVisionFile(input) {
 }
 
 async function identifierVisionImage(blob) {
+    visionResultCode = '__manuel__';
     const container = document.getElementById('visionResult');
     container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-500);"><div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem;"></div><p style="margin-top:12px;font-size:0.88rem;">Analyse en cours (code-barres + OCR + vision)...</p></div>';
     try {
@@ -1282,9 +1519,15 @@ async function identifierVisionImage(blob) {
     }
 }
 
-async function identifierVisionTexte() {
-    const input = document.getElementById('visionTextInput');
-    const texte = input.value.trim();
+async function identifierVisionTexte(valeur, autoAdd) {
+    let texte;
+    if (typeof valeur === 'string') {
+        texte = valeur.trim();
+    } else {
+        texte = document.getElementById('visionTextInput').value.trim();
+        if (!texte) return;
+        visionResultCode = '__manuel__';
+    }
     if (!texte) return;
     const container = document.getElementById('visionResult');
     container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-500);"><div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem;"></div><p style="margin-top:12px;font-size:0.88rem;">Recherche du produit...</p></div>';
@@ -1297,6 +1540,9 @@ async function identifierVisionTexte() {
         const data = await response.json();
         if (!response.ok) throw new Error(data.message || 'Erreur');
         renderVisionResult(container, data);
+        if (autoAdd && data.determination === 'certain' && data.alternatives && data.alternatives[0] && data.alternatives[0].confiance >= 0.85) {
+            await addVisionToCart(0);
+        }
     } catch (e) {
         console.error(e);
         container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);border:1px dashed var(--danger);border-radius:12px;">' + escapeHtml(e.message) + '</div>';
@@ -1405,7 +1651,17 @@ async function addVisionToCart(index) {
 
     await addToCart(p.id);
     if (typeof showToast === 'function') showToast(`${p.nom} ajouté au panier`, 'success', 2500);
-    closeVisionScanner();
+
+    // Scan continu : on garde la caméra ouverte, on prépare le prochain scan
+    lastVisionResult = null;
+    visionResultCode = null;
+    lastVisionCode = null;
+    lastVisionCodeTime = 0;
+    const container = document.getElementById('visionResult');
+    container.innerHTML = '<div style="text-align:center;padding:14px;color:#059669;font-size:0.85rem;font-weight:700;"><i class="bi bi-check-circle-fill"></i> ✓ ' + escapeHtml(p.nom) + ' ajouté au panier — scannez le produit suivant</div>';
+    setTimeout(() => {
+        if (lastVisionResult === null) container.innerHTML = '';
+    }, 2500);
 }
 
 function escapeHtml(text) { return text ? String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ''; }
