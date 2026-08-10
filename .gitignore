@@ -11,3 +11,12 @@ __pycache__/
 *.db
 .env
 
+# Environnement virtuel d'installation
+.venv/
+
+# Sauvegardes locales de la base
+sauvegardes/
+
+# Images téléversées par l'application (données locales)
+static/uploads/
+
