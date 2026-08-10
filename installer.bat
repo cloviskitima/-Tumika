@@ -75,9 +75,21 @@ echo [3/5] Installation des dependances (peut prendre plusieurs minutes) ...
 echo.
 
 REM -----------------------------------------------
-REM  4) Tesseract OCR (optionnel)
+REM  4) Raccourcis Bureau + Menu Demarrer
+REM  (avant Tesseract : ce sont eux le point d'entree
+REM   essentiel pour l'utilisateur)
 REM -----------------------------------------------
-echo [4/5] Verification de Tesseract OCR (optionnel) ...
+echo [4/5] Creation des raccourcis (Bureau + Menu Demarrer) ...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%APP%creer_raccourcis.ps1"
+if errorlevel 1 (
+    echo ATTENTION : la creation des raccourcis a echoue.
+)
+echo.
+
+REM -----------------------------------------------
+REM  5) Tesseract OCR (optionnel)
+REM -----------------------------------------------
+echo [5/5] Verification de Tesseract OCR (optionnel) ...
 where tesseract >nul 2>&1
 if errorlevel 1 (
     where winget >nul 2>&1
@@ -88,15 +100,6 @@ if errorlevel 1 (
         echo Tesseract non installe : l'OCR restera indisponible (le reste fonctionne).
     )
 )
-echo.
-
-REM -----------------------------------------------
-REM  5) Raccourcis Bureau + Menu Demarrer
-REM -----------------------------------------------
-echo [5/5] Creation des raccourcis (Bureau + Menu Demarrer) ...
-
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $ws = New-Object -ComObject WScript.Shell; $app = (Get-Location).Path; $ico = Join-Path $app 'assets\motostock.ico'; $cible = Join-Path $app 'demarrer.bat'; $dsk = $ws.CreateShortcut((Join-Path $ws.SpecialFolders('Desktop') 'MotoStockIA.lnk')); $dsk.TargetPath = $cible; $dsk.WorkingDirectory = $app; $dsk.IconLocation = $ico; $dsk.Description = 'MotoStockIA #TUMIKA'; $dsk.Save(); $smDir = Join-Path $ws.SpecialFolders('Programs') 'MotoStockIA'; New-Item -ItemType Directory -Force -Path $smDir | Out-Null; $sm = $ws.CreateShortcut((Join-Path $smDir 'MotoStockIA.lnk')); $sm.TargetPath = $cible; $sm.WorkingDirectory = $app; $sm.IconLocation = $ico; $sm.Description = 'MotoStockIA #TUMIKA'; $sm.Save(); Write-Host 'Raccourcis crees avec succes.'"
-
 echo.
 echo ================================================
 echo    Installation terminee !
