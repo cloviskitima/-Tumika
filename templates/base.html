@@ -1172,16 +1172,18 @@
             setStatus(direction === 'pull' ? 'Récupération en cours…' : 'Envoi au site en cours…', '');
             try {
                 const response = await fetch(endpoint, { method: 'POST' });
-                const data = await response.json();
+                let data = {};
+                try { data = await response.json(); } catch (e) {}
                 if (response.ok && data.success) {
                     setStatus(direction === 'pull' ? 'Récupéré et fusionné ✓' : 'Envoyé au site ✓', 'ok');
                     if (typeof showToast === 'function') showToast(data.message || 'Synchronisation réussie', 'success');
                 } else {
-                    setStatus('Échec — voir message', 'err');
-                    if (typeof showToast === 'function') showToast((data && data.message) || 'Synchronisation impossible', 'danger');
+                    const detail = (data && (data.error || data.message)) || 'Synchronisation impossible';
+                    setStatus((data && data.error) ? 'Échec : Réglages → Site en ligne' : 'Échec — ' + detail, 'err');
+                    if (typeof showToast === 'function') showToast(detail, 'danger');
                 }
             } catch (error) {
-                setStatus('Site injoignable', 'err');
+                setStatus('Site injoignable — Réglages → Site en ligne', 'err');
                 if (typeof showToast === 'function') showToast('Erreur réseau lors de la synchronisation', 'danger');
             }
         };

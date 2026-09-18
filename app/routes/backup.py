@@ -286,6 +286,14 @@ def backup_config():
     except RuntimeError as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
+    # Démarre la synchronisation automatique locale <-> site dès que le mot de
+    # passe du site est enregistré (boucle des minutes + envois après opérations).
+    try:
+        from app.autosync import start_autosync
+        start_autosync(current_app._get_current_object())
+    except Exception:
+        pass
+
     return jsonify({'success': True, 'message': 'Configuration sauvegardée avec succès', **_masked_status(cfg)})
 
 

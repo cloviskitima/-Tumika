@@ -889,6 +889,26 @@ function renderSitePullStatus(d) {
     box.innerHTML = html;
 }
 
+async function saveSiteFieldsNow() {
+    const payload = {
+        site_url: document.getElementById('siteUrl').value.trim(),
+        site_username: document.getElementById('siteUsername').value.trim(),
+        site_password: document.getElementById('sitePassword').value,
+        auto_site: document.getElementById('autoSite').checked,
+        auto_web: document.getElementById('autoWeb').checked
+    };
+    try {
+        const response = await fetch('/api/backup/config', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        return await response.json();
+    } catch (e) {
+        return { success: false };
+    }
+}
+
 async function pullSiteNow() {
     const btn = document.getElementById('sitePullBtn');
     const spinner = document.getElementById('sitePullSpinner');
@@ -900,6 +920,10 @@ async function pullSiteNow() {
     label.textContent = 'Récupération en cours…';
 
     try {
+        const saved = await saveSiteFieldsNow();
+        if (!saved || saved.success === false) {
+            throw new Error('Impossible d\'enregistrer les informations du site.');
+        }
         const response = await fetch('/api/backup/pull-site', { method: 'POST' });
         const data = await response.json();
         if (response.ok && data.success) {
@@ -907,13 +931,13 @@ async function pullSiteNow() {
             if (typeof showToast === 'function') showToast(data.message || 'Récupération réussie', 'success');
         } else {
             renderSitePullStatus(data);
-            if (typeof showToast === 'function') showToast('La récupération depuis le site a échoué', 'danger');
+            if (typeof showToast === 'function') showToast((data && data.error) || 'La récupération depuis le site a échoué', 'danger');
         }
     } catch (error) {
         console.error('Erreur lors de la récupération:', error);
         label.textContent = 'Réessayer la récupération depuis le site';
-        renderSitePullStatus({ last_site_pull_status: 'error', last_site_pull_error: 'Erreur réseau ou serveur (site en ligne injoignable).' });
-        if (typeof showToast === 'function') showToast('Erreur réseau lors de la récupération', 'danger');
+        renderSitePullStatus({ last_site_pull_status: 'error', last_site_pull_error: error.message || 'Erreur réseau ou serveur (site en ligne injoignable).' });
+        if (typeof showToast === 'function') showToast((error && error.message) && !(error instanceof TypeError) ? error.message : 'Erreur réseau lors de la récupération', 'danger');
     } finally {
         btn.disabled = false;
         spinner.style.display = 'none';
@@ -966,6 +990,10 @@ async function pushSiteNow() {
     label.textContent = 'Envoi au site en cours…';
 
     try {
+        const saved = await saveSiteFieldsNow();
+        if (!saved || saved.success === false) {
+            throw new Error('Impossible d\'enregistrer les informations du site.');
+        }
         const response = await fetch('/api/backup/push-site', { method: 'POST' });
         const data = await response.json();
         if (response.ok && data.success) {
@@ -973,13 +1001,13 @@ async function pushSiteNow() {
             if (typeof showToast === 'function') showToast(data.message || 'Envoi au site réussi', 'success');
         } else {
             renderSiteStatus(data);
-            if (typeof showToast === 'function') showToast('L\'envoi au site en ligne a échoué', 'danger');
+            if (typeof showToast === 'function') showToast((data && data.error) || 'L\'envoi au site en ligne a échoué', 'danger');
         }
     } catch (error) {
         console.error('Erreur lors de l\'envoi au site:', error);
         label.textContent = 'Réessayer l\'envoi au site en ligne';
-        renderSiteStatus({ last_site_status: 'error', last_site_error: 'Erreur réseau ou serveur (site en ligne injoignable).' });
-        if (typeof showToast === 'function') showToast('Erreur réseau lors de l\'envoi au site', 'danger');
+        renderSiteStatus({ last_site_status: 'error', last_site_error: error.message || 'Erreur réseau ou serveur (site en ligne injoignable).' });
+        if (typeof showToast === 'function') showToast((error && error.message) && !(error instanceof TypeError) ? error.message : 'Erreur réseau lors de l\'envoi au site', 'danger');
     } finally {
         btn.disabled = false;
         spinner.style.display = 'none';
