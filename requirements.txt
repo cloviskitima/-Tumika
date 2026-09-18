@@ -26,6 +26,8 @@ ultralytics==8.4.115
 pyzbar==0.1.9
 RapidFuzz==3.14.5
 pillow==12.3.0
+gunicorn==22.0.0
+
 
 # ---- Utilitaires code-barres / QR (génération d'images de test) ----
 qrcode==8.2
