@@ -3,7 +3,7 @@ Routes API pour l'application
 """
 from flask import Blueprint, request, jsonify, current_app, session, Response
 import json
-from app.models.user import User
+from app.models.user import User, role_permissions, MODULES, ACTIONS, ROLE_LABELS, MODULE_LABELS, ACTION_LABELS
 from app.models.produit import Produit
 from app.models.notification import Notification
 from app.models.taux_change import TauxChange
@@ -37,12 +37,111 @@ api_bp = Blueprint('api', __name__)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
+# ============ Contrôle d'accès (RBAC) sur les endpoints API ============
+# Dictionnaire : nom d'endpoint → (module, action)
+# Les endpoints absents de la table restent accessibles à tout utilisateur connecté.
+API_ACL = {
+    # ── Stock ──
+    'api.get_produits': ('stock', 'view'),
+    'api.get_produit': ('stock', 'view'),
+    'api.create_produit': ('stock', 'create'),
+    'api.update_produit': ('stock', 'update'),
+    'api.delete_produit': ('stock', 'delete'),
+    'api.reapprovisionner_produit': ('stock', 'update'),
+    'api.produit_signature': ('stock', 'update'),
+    'api.get_activites_stock': ('stock', 'view'),
+    'api.get_stock_repartition_chart': ('stock', 'view'),
+    'api.get_stock_statistics': ('stock', 'view'),
+    # ── Ventes ──
+    'api.get_sales': ('sales', 'view'),
+    'api.get_sale': ('sales', 'view'),
+    'api.create_sale': ('sales', 'create'),
+    'api.update_sale': ('sales', 'update'),
+    'api.delete_sale': ('sales', 'delete'),
+    'api.pay_credit_sale': ('sales', 'update'),
+    'api.get_sales_statistics': ('sales', 'view'),
+    'api.get_sales_chart_data': ('sales', 'view'),
+    # ── Caisse ──
+    'api.get_caisse_statistics': ('cash', 'view'),
+    'api.get_caisse_movements': ('cash', 'view'),
+    'api.get_single_caisse_movement': ('cash', 'view'),
+    'api.create_caisse_movement': ('cash', 'create'),
+    'api.delete_caisse_mouvement': ('cash', 'delete'),
+    'api.get_activites_caisse': ('cash', 'view'),
+    # ── Rapports / Statistiques / Comptabilité ──
+    'api.get_sales_report': ('reports', 'view'),
+    'api.get_stock_report': ('reports', 'view'),
+    'api.get_credits_report': ('reports', 'view'),
+    'api.get_connexions_report': ('reports', 'view'),
+    'api.get_full_report': ('reports', 'view'),
+    'api.get_global_statistics': ('reports', 'view'),
+    'api.get_compta_resume': ('reports', 'view'),
+    'api.get_plan_comptable': ('reports', 'view'),
+    'api.actualiser_plan_comptable': ('reports', 'update'),
+    'api.get_compta_journal': ('reports', 'view'),
+    'api.create_ecriture_manuelle': ('reports', 'update'),
+    'api.delete_ecriture': ('reports', 'delete'),
+    'api.get_grand_livre': ('reports', 'view'),
+    'api.get_balance_verification': ('reports', 'view'),
+    'api.get_bilan': ('reports', 'view'),
+    'api.synchroniser_comptabilite': ('reports', 'update'),
+    # ── Utilisateurs ──
+    'api.get_users': ('users', 'view'),
+    'api.get_users_statistics': ('users', 'view'),
+    'api.get_user': ('users', 'view'),
+    'api.create_user': ('users', 'create'),
+    'api.update_user': ('users', 'update'),
+    'api.delete_user': ('users', 'delete'),
+    'api.change_user_password': ('users', 'update'),
+    'api.toggle_user_status': ('users', 'update'),
+    # ── Paramètres ──
+    'api.get_settings': ('settings', 'view'),
+    'api.update_settings_generaux': ('settings', 'update'),
+    'api.update_settings_notifications': ('settings', 'update'),
+    'api.update_settings_apparence': ('settings', 'update'),
+    'api.update_settings_facture': ('settings', 'update'),
+    'api.get_rapports_email_config': ('settings', 'view'),
+    'api.update_rapports_email_config': ('settings', 'update'),
+    'api.envoyer_rapport_email_test': ('settings', 'update'),
+    'api.envoyer_rapports_maintenant': ('settings', 'update'),
+    'api.get_rapports_email_journal': ('settings', 'view'),
+    'api.export_donnees': ('settings', 'view'),
+    'api.reset_donnees': ('settings', 'update'),
+    'api.get_taux_change': ('settings', 'view'),
+    'api.create_taux_change': ('settings', 'update'),
+    'api.update_taux_change': ('settings', 'update'),
+    'api.delete_taux_change': ('settings', 'update'),
+    # ── Identification / Vision ──
+    'api.identification_analyse': ('stock', 'view'),
+    'api.identification_confirmer': ('stock', 'update'),
+    'api.identification_dataset': ('stock', 'update'),
+    'api.identification_dataset_info': ('stock', 'view'),
+}
+
 
 @api_bp.before_request
 def proteger_api():
-    """Exige une session authentifiée sur tous les endpoints /api/*."""
+    """Exige une session authentifiée sur tous les endpoints /api/*
+    puis applique le contrôle d'accès par rôle/permission."""
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Non connecté'}), 401
+
+    user = User.query.get(session.get('user_id'))
+    if not user:
+        session.clear()
+        return jsonify({'success': False, 'message': 'Utilisateur introuvable'}), 401
+    if not user.is_active:
+        session.clear()
+        return jsonify({'success': False, 'message': 'Votre compte est désactivé'}), 403
+
+    exigence = API_ACL.get(request.endpoint)
+    if exigence:
+        module, action = exigence
+        if not user.has_perm(module, action):
+            return jsonify({
+                'success': False,
+                'message': 'Vous n\'avez pas la permission d\'effectuer cette action.'
+            }), 403
 
 def allowed_file(filename):
     """Vérifie si l'extension du fichier est autorisée"""
@@ -2511,6 +2610,34 @@ def get_stock_statistics():
             'message': f'Erreur: {str(e)}'
         }), 400
 
+# ==================== API Rôles & Permissions ====================
+
+@api_bp.route('/roles', methods=['GET'])
+def get_roles():
+    """Renvoie la définition des rôles et des modules d'action.
+    Utilisé par l'interface de gestion des utilisateurs."""
+    try:
+        return jsonify({
+            'success': True,
+            'roles': [
+                {
+                    'id': role,
+                    'label': ROLE_LABELS.get(role, role),
+                    'permissions': role_permissions(role),
+                }
+                for role in ROLE_LABELS
+            ],
+            'modules': [
+                {'id': m, 'label': MODULE_LABELS.get(m, m)} for m in MODULES
+            ],
+            'actions': [
+                {'id': a, 'label': ACTION_LABELS.get(a, a)} for a in ACTIONS
+            ],
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Erreur: {str(e)}'}), 400
+
+
 # ==================== API Utilisateurs ====================
 
 @api_bp.route('/users', methods=['GET'])
@@ -2617,6 +2744,12 @@ def create_user():
                 'message': 'Cet email est déjà utilisé'
             }), 400
         
+        if len(str(data.get('password', ''))) < 6:
+            return jsonify({
+                'success': False,
+                'message': 'Le mot de passe doit contenir au moins 6 caractères'
+            }), 400
+        
         # Créer l'utilisateur
         user = User(
             username=data['username'],
@@ -2688,18 +2821,35 @@ def update_user(id):
                     'message': 'Vous ne pouvez pas retirer votre rôle administrateur'
                 }), 400
         
+        # Empêcher de désactiver ou rétrograder le dernier administrateur actif
+        devient_inactif = data.get('is_active') is False
+        change_role = data.get('role') and data['role'] != user.role
+        if (devient_inactif or change_role) and user.role == 'admin':
+            nb_admins_actifs = User.query.filter_by(role='admin', is_active=True).count()
+            if nb_admins_actifs <= 1:
+                return jsonify({
+                    'success': False,
+                    'message': 'Impossible : l\'utilisateur est le dernier administrateur actif.'
+                }), 400
+        
         user.username = new_username
         user.email = new_email
         user.first_name = data.get('first_name', user.first_name)
         user.last_name = data.get('last_name', user.last_name)
         user.role = data.get('role', user.role)
         user.is_active = data.get('is_active', user.is_active)
-        user.set_permissions(data.get('permissions'))
+        if 'permissions' in data:
+            user.set_permissions(data.get('permissions'))
         
         if data.get('password'):
             user.set_password(data['password'])
         
         db.session.commit()
+        
+        # Synchroniser la session si l'utilisateur modifie son propre compte
+        if session.get('user_id') == id:
+            session['username'] = user.username
+            session['role'] = user.role
         
         # Créer une notification
         Notification.create_notification(
@@ -2735,6 +2885,15 @@ def delete_user(id):
                 'message': 'Vous ne pouvez pas supprimer votre propre compte'
             }), 400
         
+        # Empêcher la suppression du dernier administrateur actif
+        if user.role == 'admin':
+            nb_admins_actifs = User.query.filter_by(role='admin', is_active=True).count()
+            if nb_admins_actifs <= 1:
+                return jsonify({
+                    'success': False,
+                    'message': 'Impossible : l\'utilisateur est le dernier administrateur actif.'
+                }), 400
+        
         db.session.delete(user)
         db.session.commit()
         
@@ -2760,7 +2919,9 @@ def delete_user(id):
 
 @api_bp.route('/users/<int:id>/password', methods=['PUT'])
 def change_user_password(id):
-    """Change le mot de passe d'un utilisateur"""
+    """Change le mot de passe d'un utilisateur.
+    Un administrateur peut réinitialiser le mot de passe de n'importe qui ;
+    si l'utilisateur change son propre mot de passe, l'ancien est exigé."""
     try:
         user = User.query.get_or_404(id)
         data = request.get_json()
@@ -2770,6 +2931,20 @@ def change_user_password(id):
                 'success': False,
                 'message': 'Veuillez fournir un mot de passe'
             }), 400
+        if len(str(data['password'])) < 6:
+            return jsonify({
+                'success': False,
+                'message': 'Le mot de passe doit contenir au moins 6 caractères'
+            }), 400
+        
+        # Changer son propre mot de passe → exiger l'ancien
+        if session.get('user_id') == id:
+            ancien = data.get('mot_de_passe_actuel', '')
+            if not user.check_password(ancien):
+                return jsonify({
+                    'success': False,
+                    'message': 'L\'ancien mot de passe est incorrect'
+                }), 400
         
         user.set_password(data['password'])
         db.session.commit()
@@ -2806,6 +2981,15 @@ def toggle_user_status(id):
                 'success': False,
                 'message': 'Vous ne pouvez pas désactiver votre propre compte'
             }), 400
+        
+        # Empêcher la désactivation du dernier administrateur actif
+        if user.role == 'admin' and user.is_active:
+            nb_admins_actifs = User.query.filter_by(role='admin', is_active=True).count()
+            if nb_admins_actifs <= 1:
+                return jsonify({
+                    'success': False,
+                    'message': 'Impossible : l\'utilisateur est le dernier administrateur actif.'
+                }), 400
         
         user.is_active = not user.is_active
         db.session.commit()

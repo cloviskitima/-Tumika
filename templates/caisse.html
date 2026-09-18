@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Gestion de Caisse | MotoStockIA - #TUMIKA{% endblock %}
+{% block title %}Gestion de Caisse | MotoStock - #TUMIKA{% endblock %}
 {% block page_title %}Gestion de Caisse{% endblock %}
 
 {% block content %}
@@ -60,71 +60,49 @@
 }
 </style>
 
-<!-- Banner Hero Caisse -->
-<div class="no-print" style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1d4ed8 100%); border-radius: 16px; padding: 28px 32px; color: white; box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.3); margin-bottom: 24px; position: relative; overflow: hidden;">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; position: relative; z-index: 1;">
-        <div>
-            <h2 style="margin: 0 0 6px 0; font-weight: 800; font-size: 1.75rem; letter-spacing: -0.5px;">💰 Gestion de Caisse Bi-Devise</h2>
-            <p style="margin: 0; opacity: 0.88; font-size: 0.98rem;">Suivi des encaissements, décaissements, soldes en FC / $ USD et rapports de caisse.</p>
-        </div>
-        <div style="display: flex; gap: 12px;">
-            <button class="btn btn-success" onclick="openMovementModal('in')" style="border-radius: 10px; font-weight: 700; padding: 10px 18px;">
-                <i class="bi bi-plus-circle-fill me-1"></i> Entrée Caisse
-            </button>
-            <button class="btn btn-danger" onclick="openMovementModal('out')" style="border-radius: 10px; font-weight: 700; padding: 10px 18px;">
-                <i class="bi bi-dash-circle-fill me-1"></i> Sortie Caisse
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Stats Grid Bi-Devises -->
-<div class="stats-grid no-print" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 24px;">
-    <!-- 1. Solde Caisse -->
-    <div class="card" style="border-radius: 16px; padding: 22px; border: 1px solid var(--gray-200); box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: row; align-items: center; gap: 18px;">
-        <div style="width: 56px; height: 56px; border-radius: 14px; background: rgba(16, 185, 129, 0.12); color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0;">
+<!-- Stats Cards -->
+<div class="stats-grid no-print">
+    <div class="stat-card">
+        <div class="stat-icon success">
             <i class="bi bi-cash-stack"></i>
         </div>
-        <div>
-            <div style="font-size: 0.85rem; font-weight: 600; color: var(--gray-500); text-transform: uppercase;">Solde Caisse</div>
-            <div style="font-size: 1.25rem; font-weight: 800; color: #047857;" id="cashBalanceCdf">0 FC</div>
-            <div style="font-size: 0.95rem; font-weight: 700; color: #059669;" id="cashBalanceUsd">$ 0.00</div>
+        <div class="stat-info">
+            <h3 id="cashBalanceUsd">$ 0.00</h3>
+            <p>Solde Caisse (USD)</p>
+            <small id="cashBalanceCdf" style="font-size: 0.95rem; font-weight: 600; color: var(--primary);">0 FC</small>
         </div>
     </div>
-
-    <!-- 2. Total Entrées -->
-    <div class="card" style="border-radius: 16px; padding: 22px; border: 1px solid var(--gray-200); box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: row; align-items: center; gap: 18px;">
-        <div style="width: 56px; height: 56px; border-radius: 14px; background: rgba(30, 58, 138, 0.1); color: #1e3a8a; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0;">
+    
+    <div class="stat-card">
+        <div class="stat-icon primary">
             <i class="bi bi-arrow-down-circle"></i>
         </div>
-        <div>
-            <div style="font-size: 0.85rem; font-weight: 600; color: var(--gray-500); text-transform: uppercase;">Total Entrées</div>
-            <div style="font-size: 1.1rem; font-weight: 800; color: #1e3a8a;" id="totalInCdf">0 FC</div>
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--gray-700);" id="totalInUsd">$ 0.00</div>
+        <div class="stat-info">
+            <h3 id="totalInUsd">$ 0.00</h3>
+            <p>Total Entrées (USD)</p>
+            <small id="totalInCdf" style="font-size: 0.95rem; font-weight: 600; color: var(--success);">0 FC</small>
         </div>
     </div>
-
-    <!-- 3. Total Sorties -->
-    <div class="card" style="border-radius: 16px; padding: 22px; border: 1px solid var(--gray-200); box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: row; align-items: center; gap: 18px;">
-        <div style="width: 56px; height: 56px; border-radius: 14px; background: rgba(239, 68, 68, 0.12); color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0;">
+    
+    <div class="stat-card">
+        <div class="stat-icon danger">
             <i class="bi bi-arrow-up-circle"></i>
         </div>
-        <div>
-            <div style="font-size: 0.85rem; font-weight: 600; color: var(--gray-500); text-transform: uppercase;">Total Sorties</div>
-            <div style="font-size: 1.1rem; font-weight: 800; color: #dc2626;" id="totalOutCdf">0 FC</div>
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--gray-700);" id="totalOutUsd">$ 0.00</div>
+        <div class="stat-info">
+            <h3 id="totalOutUsd">$ 0.00</h3>
+            <p>Total Sorties (USD)</p>
+            <small id="totalOutCdf" style="font-size: 0.95rem; font-weight: 600; color: var(--danger);">0 FC</small>
         </div>
     </div>
-
-    <!-- 4. Solde du Jour -->
-    <div class="card" style="border-radius: 16px; padding: 22px; border: 1px solid var(--gray-200); box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: row; align-items: center; gap: 18px;">
-        <div style="width: 56px; height: 56px; border-radius: 14px; background: rgba(245, 158, 11, 0.12); color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0;">
+    
+    <div class="stat-card">
+        <div class="stat-icon warning">
             <i class="bi bi-calendar-day"></i>
         </div>
-        <div>
-            <div style="font-size: 0.85rem; font-weight: 600; color: var(--gray-500); text-transform: uppercase;">Flux du Jour</div>
-            <div style="font-size: 1.1rem; font-weight: 800; color: #b45309;" id="todayMovementCdf">0 FC</div>
-            <div style="font-size: 0.9rem; font-weight: 700; color: var(--gray-700);" id="todayMovementUsd">$ 0.00</div>
+        <div class="stat-info">
+            <h3 id="todayMovementUsd">$ 0.00</h3>
+            <p>Aujourd'hui (USD)</p>
+            <small id="todayMovementCdf" style="font-size: 0.95rem; font-weight: 600; color: #d97706;">0 FC</small>
         </div>
     </div>
 </div>
@@ -373,8 +351,19 @@
         </div>
         <!-- Zone imprimable du rapport -->
         <div style="padding: 32px; flex: 1; overflow-y: auto;" id="printableReportArea">
-            <!-- En-tête officiel (design & paramètres de l'entreprise) -->
-            <div id="etatReportHeader"></div>
+            <!-- En-tête officiel -->
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #1e3a5f; padding-bottom: 16px; margin-bottom: 24px;">
+                <div>
+                    <h2 style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #1e293b;">MotoStockIA - #TUMIKA</h2>
+                    <p style="margin: 4px 0 0; font-size: 0.85rem; color: #64748b; font-weight: 500;">Services de Gestion Commerciale &amp; Trésorerie</p>
+                    <p style="margin: 2px 0 0; font-size: 0.8rem; color: #94a3b8;">République Démocratique du Congo</p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="display: inline-block; padding: 6px 14px; background: #1e3a5f; color: white; font-weight: 700; font-size: 0.95rem; border-radius: 6px; text-transform: uppercase;">RAPPORT DE CAISSE</div>
+                    <div id="reportDate" style="font-size: 0.85rem; color: #64748b; margin-top: 6px;">Date: --/--/----</div>
+                    <div id="reportOperator" style="font-size: 0.85rem; color: #64748b; margin-top: 2px;">Opérateur: -</div>
+                </div>
+            </div>
 
             <!-- Cartes KPI du rapport -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
@@ -463,7 +452,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/etats_style.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     loadCashStatistics();
@@ -844,12 +832,7 @@ function triggerPrintReceipt() {
 async function openReportModal() {
     const modal = document.getElementById('reportModal');
     const now = new Date();
-    const periodeStr = 'Période: ' + now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    await injecterEnTeteEtat('etatReportHeader', 'Rapport de caisse', {
-        reference: 'Rapport synthétique des mouvements de caisse',
-        metaExtra: [periodeStr]
-    });
+    document.getElementById('reportDate').textContent = `Date: ${now.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`;
 
     // Récupérer l'opérateur via les stats (qui contient user_name)
     try {
@@ -874,10 +857,7 @@ async function openReportModal() {
 
         // Récupérer le nom de l'opérateur du premier mouvement
         if (movements.length > 0 && movements[0].operator_name) {
-            await injecterEnTeteEtat('etatReportHeader', 'Rapport de caisse', {
-                reference: 'Rapport synthétique des mouvements de caisse',
-                metaExtra: [periodeStr, 'Opérateur: ' + movements[0].operator_name]
-            });
+            document.getElementById('reportOperator').textContent = `Opérateur: ${movements[0].operator_name}`;
         }
 
         if (movements.length === 0) {

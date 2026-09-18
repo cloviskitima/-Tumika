@@ -936,7 +936,7 @@ def annexe_bg(canv, doc):
     canv.line(MARGIN + 1.0 * cm, 1.72 * cm, w - MARGIN - 1.0 * cm, 1.72 * cm)
     canv.setFont(F, 7.5)
     canv.setFillColor(C_GRAY)
-    canv.drawCentredString(w / 2, 1.32 * cm, 'République Démocratique du Congo — Kinshasa')
+    canv.drawCentredString(w / 2, 1.32 * cm, 'République Démocratique du Congo — Goma, province du Nord-Kivu')
     canv.drawString(MARGIN + 1.0 * cm, 1.32 * cm, 'N° MSIA-DOC-2026')
     canv.drawRightString(w - MARGIN - 1.0 * cm, 1.32 * cm, 'Page %d' % doc.page)
     canv.restoreState()
@@ -952,16 +952,25 @@ def legal_docs():
                            'N° MSIA-LIC-2026-001 · Références : Code du numérique RDC'))
     story.append(Spacer(1, 8))
     story.append(meta_table([
-        ('Émetteur', '<b>MotoStockIA #TUMIKA</b> — société de droit congolais, siège à Kinshasa (RDC), '
+        ('Émetteur', '<b>MotoStockIA #TUMIKA</b> — société de droit congolais, siège à Goma, province du Nord-Kivu (RDC), '
                      'représentée par son Président Directeur Général (ci-après « l\'Éditeur »).'),
         ('Bénéficiaire', 'Toute personne physique ou morale autorisée à installer et à utiliser le Logiciel '
                          '(ci-après « l\'Utilisateur »).'),
-        ('Date et lieu', 'Fait à Kinshasa, République Démocratique du Congo, le ____________.'),
+        ('Date et lieu', 'Fait à Goma, province du Nord-Kivu, République Démocratique du Congo, le ____________.'),
         ('Textes de référence', 'Ordonnance-loi n° 23/010 du 13 mars 2023 portant Code du numérique ; '
                                 'loi n° 20/017 du 25 novembre 2020 ; Convention de Malabo ratifiée par '
                                 'l\'ordonnance-loi n° 23/008 du 10 mars 2023.'),
     ]))
     story.append(Spacer(1, 10))
+    story.append(RoundedBox(
+        '<b>PRÉCISION JURIDIQUE — NATURE DU PRÉSENT ACTE :</b> le présent contrat constitue '
+        'exclusivement un <b>contrat de licence utilisateur</b>. Il ne saurait, en aucun cas, être '
+        'interprété comme une cession, une vente ou un transfert de droits propriétaires. '
+        'L\'Utilisateur n\'acquiert qu\'un <b>droit d\'usage</b> ; la propriété du Logiciel, de son '
+        'code source et de l\'ensemble de ses fichiers de contrôle demeure intégralement celle de '
+        'l\'Éditeur.',
+        bg=HexColor('#fef2f2'), border=C_RED, icon='&#9888;'))
+    story.append(Spacer(1, 8))
     story.append(Paragraph(
         '<b>ENTRE LES SOUSSIGNÉS :</b><br/><br/>'
         '<b>L\'ÉDITEUR :</b> la société <b>MotoStockIA #TUMIKA</b>, conçue et développée par ses '
@@ -1015,13 +1024,36 @@ def legal_docs():
          'civils.'),
         ('Article 12 — Dispositions finales', 'Les annexes éventuelles font partie intégrante du contrat. '
          'Toute modification du présent contrat doit être écrite et signée par les deux parties.'),
+        ('Article 13 — Licence utilisateur, exclusion de toute cession', 'La remise du Logiciel à '
+         'l\'Utilisateur, à quelque titre que ce soit, n\'emporte qu\'un droit d\'usage (contrat '
+         'utilisateur) et nullement un transfert de propriété. Le présent contrat ne cède, ne vend '
+         'et ne transfère aucun droit propriétaire, en tout ou en partie, pour l\'avenir comme pour '
+         'le passé.'),
+        ('Article 14 — Réserve absolue de la propriété et du contrôle', 'L\'Éditeur demeure le '
+         'propriétaire exclusif et inaliénable du Logiciel, notamment de son code source, de ses '
+         'algorithmes, de sa structure de données, de sa documentation technique et de tout fichier '
+         'de contrôle. L\'Utilisateur reconnaît n\'acquérir aucun droit de contrôle, d\'accès au '
+         'code source ou de modification substantielle du Logiciel, et s\'interdit toute ingérence '
+         'dans son fonctionnement.'),
+        ('Article 15 — Interdictions absolues', 'Il est expressément interdit à l\'Utilisateur de '
+         'décompiler, désassembler, décrypter, rétro-concevoir, copier, reproduire, adapter, '
+         'traduire, louer, prêter, sous-licencier ou exploiter commercialement le Logiciel, en tout '
+         'ou en partie, sans l\'autorisation écrite et préalable de l\'Éditeur. Toute tentative de '
+         'contournement des mécanismes de protection ou d\'accès aux fichiers de contrôle du '
+         'Logiciel constitue une violation grave, sanctionnable conformément au Code du numérique '
+         'congolais.'),
+        ('Article 16 — Incessibilité', 'La présente licence est strictement personnelle et non '
+         'transférable. Toute cession, transmission ou revente, même partielle, est subordonnée à '
+         'l\'accord écrit et exprès de l\'Éditeur, à peine de nullité et de résiliation de plein '
+         'droit du présent contrat.'),
     ]
     for titre, texte in articles_licence:
         story.append(article_block(titre, texte))
         story.append(Spacer(1, 3))
     story.append(Spacer(1, 10))
     story.append(Paragraph(
-        'Fait en deux (2) exemplaires originaux, à Kinshasa, République Démocratique du Congo.',
+        'Fait en deux (2) exemplaires originaux, à Goma, province du Nord-Kivu, '
+        'République Démocratique du Congo.',
         S_BODY_S))
     story.append(Spacer(1, 14))
     sig_a = Table([
@@ -1055,11 +1087,19 @@ def legal_docs():
                      '(ci-après « les Créateurs »).'),
         ('Partie 2', '<b>Le Client</b> : gérant, commerçant ou entreprise qui acquiert le droit '
                      'd\'utilisation (ci-après « le Client »).'),
-        ('Date et lieu', 'Fait à Kinshasa, République Démocratique du Congo, le ____________.'),
+        ('Date et lieu', 'Fait à Goma, province du Nord-Kivu, République Démocratique du Congo, le ____________.'),
         ('Textes de référence', 'Ordonnance-loi n° 23/010 du 13 mars 2023 (Code du numérique) ; '
                                 'loi n° 20/017 du 25 novembre 2020 (TIC).'),
     ]))
     story.append(Spacer(1, 10))
+    story.append(RoundedBox(
+        '<b>PRÉCISION JURIDIQUE — PORTÉE DU PRÉSENT CONTRAT :</b> le présent acte régit exclusivement '
+        'la fourniture d\'une <b>licence d\'utilisation</b> (contrat utilisateur). Le Client acquiert '
+        'un droit d\'usage du Logiciel ; il n\'acquiert ni la propriété, ni la maîtrise, ni le '
+        'contrôle du Logiciel, du code source ou des fichiers de développement, lesquels restent la '
+        'propriété exclusive des Créateurs.',
+        bg=HexColor('#fef2f2'), border=C_RED, icon='&#9888;'))
+    story.append(Spacer(1, 8))
     story.append(Paragraph(
         'Le présent contrat règle la relation entre les <b>créateurs et développeurs</b> du logiciel '
         '<b>MotoStockIA #TUMIKA</b> (ci-après « les Créateurs ») et l\'<b>Utilisateur</b> final '
@@ -1105,13 +1145,32 @@ def legal_docs():
          'sont seuls compétents.'),
         ('Article 12 — Intégralité et modifications', 'Le présent contrat constitue l\'intégralité de '
          'l\'accord des parties. Toute modification doit faire l\'objet d\'un avenant écrit signé.'),
+        ('Article 13 — Licence utilisateur seulement', 'La remise du Logiciel ne confère au Client '
+         'qu\'une licence d\'utilisation (contrat utilisateur). Elle ne constitue ni une vente, ni '
+         'une cession, ni un transfert de droits propriétaires, de quelque nature que ce soit. Le '
+         'Client n\'acquiert notamment aucun droit de propriété sur le code source, les algorithmes, '
+         'la base de données de développement ou les fichiers de contrôle.'),
+        ('Article 14 — Propriété et maîtrise réservées aux Créateurs', 'Les Créateurs, seuls '
+         'détenteurs du code source et des fichiers de contrôle du Logiciel, demeurent les '
+         'propriétaires exclusifs et conservent la maîtrise pleine et entière du Logiciel, de ses '
+         'mises à jour, de ses mises en œuvre et de son exploitation. Le Client ne peut ni prétendre '
+         'à ces droits ni en revendiquer le contrôle, directement ou indirectement.'),
+        ('Article 15 — Interdictions et non-ingérence', 'Il est interdit au Client de décompiler, '
+         'désassembler, extraire, copier, reproduire, adapter, traduire, rétro-concevoir, '
+         'sous-licencier ou céder le Logiciel, en tout ou en partie, et de tenter de contourner ses '
+         'mécanismes de protection ou d\'accéder aux données de contrôle, sans l\'accord écrit et '
+         'préalable des Créateurs.'),
+        ('Article 16 — Permanence des droits', 'Les droits de propriété intellectuelle des Créateurs '
+         'sont perpétuels et survivent à la cessation, pour quelque cause que ce soit, de la présente '
+         'licence. En cas de résiliation, le Client cesse immédiatement toute utilisation du Logiciel '
+         'et restitue ou détruit, à la demande des Créateurs, toutes les copies en sa possession.'),
     ]
     for titre, texte in articles_dev:
         story.append(article_block(titre, texte))
         story.append(Spacer(1, 3))
     story.append(Spacer(1, 10))
     story.append(Paragraph(
-        'Fait à Kinshasa, République Démocratique du Congo, le ____________.<br/><br/>'
+        'Fait à Goma, province du Nord-Kivu, République Démocratique du Congo, le ____________.<br/><br/>'
         '<b>Pour les Créateurs</b> (nom, qualité, signature) : ________________________<br/><br/>'
         '<b>Le Client</b> (nom, qualité, signature) : ________________________', S_BODY_S))
     story.append(PageBreak())
@@ -1171,7 +1230,7 @@ def legal_docs():
         'les créateurs et développeurs du logiciel MotoStockIA #TUMIKA.', S_BODY))
     story.append(Spacer(1, 18))
     sig_c = Table([
-        [Paragraph('Fait à Kinshasa, le ____________<br/><br/>'
+        [Paragraph('Fait à Goma, province du Nord-Kivu, le ____________<br/><br/>'
                    '<b>Cachet et signature des créateurs / développeurs :</b>',
                    st('sc', fontSize=9.5, leading=14, alignment=TA_LEFT, spaceAfter=0)),
          Cachet()],
@@ -1219,6 +1278,7 @@ def legal_docs():
     story.append(Paragraph(
         '<br/><center><font face="SegoeB" color="#1e3a8a" size=11>Merci de votre confiance.</font>'
         '<br/><font face="Segoe" color="#64748b" size=9>© %s MotoStockIA #TUMIKA — Tous droits réservés.'
+        '<br/>Licence d\'utilisation — Propriété exclusive des créateurs.'
         '<br/>République Démocratique du Congo</font></center>' % '2026', S_BODY))
 
     return story

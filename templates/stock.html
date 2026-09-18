@@ -1,80 +1,54 @@
 {% extends "base.html" %}
 
-{% block title %}Gestion du Stock | MotoStockIA - #TUMIKA{% endblock %}
+{% block title %}Gestion du Stock | MotoStock - #TUMIKA{% endblock %}
 {% block page_title %}Gestion du Stock{% endblock %}
 
 {% block content %}
-<!-- Banner Hero Stock -->
-<div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1d4ed8 100%); border-radius: 16px; padding: 28px 32px; color: white; box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.3); margin-bottom: 24px; position: relative; overflow: hidden;">
-    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; position: relative; z-index: 1;">
-        <div>
-            <h2 style="margin: 0 0 6px 0; font-weight: 800; font-size: 1.75rem; letter-spacing: -0.5px;">📦 Gestion Intégrale du Stock</h2>
-            <p style="margin: 0; opacity: 0.88; font-size: 0.98rem;">Inventaire des pièces moto, suivi du stock minimal, codes-barres et réapprovisionnement.</p>
-        </div>
-        <div style="display: flex; gap: 12px;">
-            <button class="btn btn-light" onclick="openProductModal()" style="border-radius: 10px; font-weight: 700; padding: 10px 20px;">
-                <i class="bi bi-plus-circle-fill text-primary"></i> Ajouter un Produit
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- Stats Grid Bi-Devises -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 24px;">
-    <!-- 1. Total Produits -->
-    <div class="card" style="border-radius: 16px; padding: 22px; border: 1px solid var(--gray-200); box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: row; align-items: center; gap: 18px;">
-        <div style="width: 56px; height: 56px; border-radius: 14px; background: rgba(30, 58, 138, 0.1); color: #1e3a8a; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0;">
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon primary">
             <i class="bi bi-box-seam"></i>
         </div>
-        <div>
-            <div style="font-size: 0.85rem; font-weight: 600; color: var(--gray-500); text-transform: uppercase;">Total Produits</div>
-            <div style="font-size: 1.8rem; font-weight: 800; color: var(--gray-900);" id="totalProducts">0</div>
-            <div style="font-size: 0.82rem; color: var(--gray-500);">Produits enregistrés</div>
+        <div class="stat-info">
+            <h3 id="totalProducts">0</h3>
+            <p>Total Produits</p>
         </div>
     </div>
-
-    <!-- 2. Valeur Stock Bi-Devise -->
-    <div class="card" style="border-radius: 16px; padding: 22px; border: 1px solid var(--gray-200); box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: row; align-items: center; gap: 18px;">
-        <div style="width: 56px; height: 56px; border-radius: 14px; background: rgba(16, 185, 129, 0.12); color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0;">
-            <i class="bi bi-wallet2"></i>
+    
+    <div class="stat-card">
+        <div class="stat-icon success">
+            <i class="bi bi-currency-dollar"></i>
         </div>
-        <div>
-            <div style="font-size: 0.85rem; font-weight: 600; color: var(--gray-500); text-transform: uppercase;">Valeur du Stock</div>
-            <div style="font-size: 1.25rem; font-weight: 800; color: #047857; margin-top: 2px;" id="totalStockValueFC">0 FC</div>
-            <div style="font-size: 0.95rem; font-weight: 700; color: #059669;" id="totalStockValueUSD">$ 0.00</div>
+        <div class="stat-info">
+            <h3 id="totalStockValue">0 FC</h3>
+            <p>Valeur Stock</p>
         </div>
     </div>
-
-    <!-- 3. Stock Faible -->
-    <div class="card" style="border-radius: 16px; padding: 22px; border: 1px solid var(--gray-200); box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: row; align-items: center; gap: 18px;">
-        <div style="width: 56px; height: 56px; border-radius: 14px; background: rgba(245, 158, 11, 0.12); color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0;">
+    
+    <div class="stat-card">
+        <div class="stat-icon warning">
             <i class="bi bi-exclamation-triangle"></i>
         </div>
-        <div>
-            <div style="font-size: 0.85rem; font-weight: 600; color: var(--gray-500); text-transform: uppercase;">Stock Faible</div>
-            <div style="font-size: 1.8rem; font-weight: 800; color: #b45309;" id="lowStockCount">0</div>
-            <div style="font-size: 0.82rem; color: #b45309;">Seuil critique atteint</div>
+        <div class="stat-info">
+            <h3 id="lowStockCount">0</h3>
+            <p>Stock Faible</p>
         </div>
     </div>
-
-    <!-- 4. Stock Épuisé -->
-    <div class="card" style="border-radius: 16px; padding: 22px; border: 1px solid var(--gray-200); box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: row; align-items: center; gap: 18px;">
-        <div style="width: 56px; height: 56px; border-radius: 14px; background: rgba(239, 68, 68, 0.12); color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0;">
+    
+    <div class="stat-card">
+        <div class="stat-icon danger">
             <i class="bi bi-x-circle"></i>
         </div>
-        <div>
-            <div style="font-size: 0.85rem; font-weight: 600; color: var(--gray-500); text-transform: uppercase;">Ruptures Stock</div>
-            <div style="font-size: 1.8rem; font-weight: 800; color: #dc2626;" id="outOfStockCount">0</div>
-            <div style="font-size: 0.82rem; color: #dc2626;">Produits à réapprovisionner</div>
+        <div class="stat-info">
+            <h3 id="outOfStockCount">0</h3>
+            <p>Stock Épuisé</p>
         </div>
     </div>
 </div>
 
 <!-- Stock Alerts -->
 <div id="stockAlerts" style="display: none; margin-bottom: 20px;"></div>
-
-<!-- Expiration Alerts -->
-<div id="expirationAlerts" style="display: none; margin-bottom: 20px;"></div>
 
 <!-- Filters and Actions -->
 <div class="card mb-4">
@@ -102,10 +76,6 @@
                     <i class="bi bi-clock-history"></i>
                     <span>Historique</span>
                 </button>
-                <button class="btn" onclick="openStockScanner()" style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; border: none; border-radius: 10px; font-weight: 700; padding: 10px 18px;">
-                    <i class="bi bi-camera-fill"></i>
-                    <span>Scanner par Photo</span>
-                </button>
                 <button class="btn btn-primary" onclick="openProductModal()">
                     <i class="bi bi-plus-circle"></i>
                     <span>Ajouter produit</span>
@@ -118,45 +88,26 @@
 <!-- Products Table -->
 <div class="card">
     <div class="card-body">
-        <div style="overflow-x: hidden;">
-            <table class="table" id="productsTable" style="table-layout: fixed; width: 100%;">
-                <colgroup>
-                    <col style="width: 4%;">
-                    <col style="width: 13%;">
-                    <col style="width: 7%;">
-                    <col style="width: 7%;">
-                    <col style="width: 7%;">
-                    <col style="width: 6%;">
-                    <col style="width: 6%;">
-                    <col style="width: 4%;">
-                    <col style="width: 7%;">
-                    <col style="width: 7%;">
-                    <col style="width: 7%;">
-                    <col style="width: 6%;">
-                    <col style="width: 5%;">
-                    <col style="width: 14%;">
-                </colgroup>
+        <div class="table-responsive">
+            <table class="table" id="productsTable">
                 <thead>
                     <tr>
-                        <th style="white-space: nowrap; font-size: 12px;">Image</th>
-                        <th style="font-size: 12px;">Produit</th>
-                        <th style="font-size: 12px;">Référence</th>
-                        <th style="font-size: 12px;">Code-barres</th>
-                        <th style="font-size: 12px;">Catégorie</th>
-                        <th style="font-size: 12px; white-space: nowrap;">Prix Achat</th>
-                        <th style="font-size: 12px; white-space: nowrap;">Prix Vente</th>
-                        <th style="font-size: 12px;">Qté</th>
-                        <th style="font-size: 12px; white-space: nowrap;">Total Achat</th>
-                        <th style="font-size: 12px; white-space: nowrap;">Total Vente</th>
-                        <th style="font-size: 12px;">Expiration</th>
-                        <th style="font-size: 12px;">Date Ajout</th>
-                        <th style="font-size: 12px;">Statut</th>
-                        <th style="font-size: 12px;">Actions</th>
+                        <th>Image</th>
+                        <th>Produit</th>
+                        <th>Référence</th>
+                        <th>Code-barres</th>
+                        <th>Catégorie</th>
+                        <th>Prix Achat</th>
+                        <th>Prix Vente</th>
+                        <th>Quantité</th>
+                        <th>Date Ajout</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="productsTableBody">
                     <tr>
-                        <td colspan="14" style="text-align: center; color: var(--gray-500); padding: 40px;">
+                        <td colspan="11" style="text-align: center; color: var(--gray-500); padding: 40px;">
                             <i class="bi bi-box-seam" style="font-size: 2rem; margin-bottom: 16px;"></i>
                             <p>Aucun produit en stock</p>
                         </td>
@@ -259,16 +210,6 @@
                     <input type="number" id="productMinStock" class="form-control" min="0" value="5" placeholder="5">
                 </div>
                 
-                <div style="grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; background: var(--gray-100); border-radius: 12px; padding: 14px 16px;">
-                    <input type="checkbox" id="productPerishable" onchange="toggleExpirationField()" style="width: 20px; height: 20px; cursor: pointer;">
-                    <label for="productPerishable" style="font-weight: 500; color: var(--gray-700); margin: 0; cursor: pointer;">Produit périssable (date d'expiration)</label>
-                </div>
-                
-                <div id="expirationField" style="display: none; grid-column: 1 / -1;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--gray-700);">Date d'expiration *</label>
-                    <input type="date" id="productExpiration" class="form-control" required>
-                </div>
-                
                 <div style="grid-column: 1 / -1;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--gray-700);">Compatibilités</label>
                     <textarea id="productCompatibilities" class="form-control" placeholder="Modèles compatibles..." style="min-height: 80px;"></textarea>
@@ -318,64 +259,14 @@
     </div>
 </div>
 
-<!-- Modal Scanner Photo (Ajout au Stock : identification / OCR / code-barres) -->
-<div id="stockScannerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 2000; justify-content: center; align-items: center; padding: 20px;">
-    <div style="background: white; border-radius: 20px; width: 95%; max-width: 640px; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3);">
-        <div style="padding: 16px 24px; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: white; display: flex; justify-content: space-between; align-items: center;">
-            <div style="font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
-                <i class="bi bi-camera-fill"></i> Scanner une Photo — Ajout au Stock
-            </div>
-            <button onclick="closeStockScanner()" style="background: rgba(255,255,255,0.15); border: none; color: white; width: 32px; height: 32px; border-radius: 8px; cursor: pointer;">×</button>
-        </div>
-
-        <div style="flex: 1; overflow-y: auto; padding: 20px;">
-            <!-- Instructions : la caméra réutilisée est celle de l'enregistrement produit -->
-            <div style="display: flex; align-items: center; gap: 12px; background: var(--gray-100); border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px;">
-                <div style="width: 52px; height: 52px; border-radius: 10px; background: var(--dark-blue); color: white; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <i class="bi bi-camera-video-fill" style="font-size: 1.4rem;"></i>
-                </div>
-                <div style="font-size: 0.85rem; color: var(--gray-600); line-height: 1.5;">
-                    <strong>La caméra de l'enregistrement produit est réutilisée.</strong><br>
-                    Cliquez sur « Ouvrir la caméra », cadrez l'étiquette / le code-barres, puis capturez pour identifier.
-                </div>
-            </div>
-
-            <!-- Actions -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
-                <button class="btn btn-outline-primary" onclick="openWebcamModalForScan()" style="border-radius: 10px; font-weight: 700; font-size: 0.88rem;">
-                    <i class="bi bi-camera-video me-1"></i> Ouvrir la caméra
-                </button>
-                <label class="btn btn-outline-success" style="border-radius: 10px; font-weight: 700; font-size: 0.88rem; margin: 0; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                    <i class="bi bi-image me-1"></i> Photo / Fichier
-                    <input type="file" id="stockFileInput" accept="image/*" capture="environment" style="display: none;" onchange="analyseStockFile(this)">
-                </label>
-            </div>
-
-            <!-- Saisie manuelle code / référence -->
-            <div style="display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-bottom: 16px;">
-                <input type="text" id="stockTextInput" class="form-control" placeholder="Ou saisissez un code-barres / une référence..." style="border-radius: 10px;" onkeydown="if(event.key==='Enter'){identifierStockTexte();}">
-                <button class="btn btn-primary" onclick="identifierStockTexte()" style="border-radius: 10px; font-weight: 700;"><i class="bi bi-upc-scan me-1"></i> Identifier</button>
-            </div>
-
-            <!-- Résultat -->
-            <div id="stockScanResult"></div>
-        </div>
-    </div>
-</div>
-
 <!-- Webcam Modal -->
 <div id="webcamModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 2000; justify-content: center; align-items: center;">
     <div style="background: white; border-radius: 16px; width: 95%; max-width: 600px; padding: 24px; text-align: center;">
         <h3 style="margin-bottom: 20px; color: #333;">Capture Webcam</h3>
-        <div style="margin-bottom: 12px; text-align: left;">
-            <label for="webcamSelect" style="font-size: 0.85rem; font-weight: 600; color: #555;">Caméra :</label>
-            <select id="webcamSelect" onchange="restartWebcamIfOpen()" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid #ddd; margin-top: 4px;"></select>
-        </div>
         <div style="background: black; border-radius: 12px; overflow: hidden; margin-bottom: 20px;">
-            <video id="webcamVideo" autoplay playsinline muted style="width: 100%; height: auto;"></video>
+            <video id="webcamVideo" autoplay playsinline style="width: 100%; height: auto;"></video>
         </div>
         <canvas id="webcamCanvas" style="display: none;"></canvas>
-        <div id="webcamDiagnostic" style="display: none; margin-bottom: 14px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 10px 12px; font-size: 0.78rem; color: #475569; text-align: left; line-height: 1.7;"></div>
         <div style="display: flex; gap: 12px; justify-content: center;">
             <button onclick="captureWebcam()" class="btn btn-primary" style="padding: 12px 24px;">Capturer</button>
             <button onclick="closeWebcamModal()" class="btn btn-secondary" style="padding: 12px 24px;">Annuler</button>
@@ -409,112 +300,30 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/etats_style.js') }}"></script>
 <script>
+// Variables globales pour la webcam
 let webcamStream = null;
 let currentImageField = null;
-let webcamScanMode = false;
-
-async function requestCameraStream() {
-    const select = document.getElementById('webcamSelect');
-    const deviceId = select ? select.value : '';
-    return window.obtenirFluxCamera(deviceId);
-}
-
-async function startWebcamStream() {
-    const video = document.getElementById('webcamVideo');
-    if (!video) throw new Error('Élément vidéo introuvable');
-
-    if (webcamStream) {
-        webcamStream.getTracks().forEach(t => t.stop());
-        webcamStream = null;
-    }
-
-    const stream = await requestCameraStream();
-    webcamStream = stream;
-    video.srcObject = stream;
-    video.muted = true;
-    await window.attendreLectureVideo(video);
-}
-
-// Si la caméra est déjà ouverte, redémarre avec le périphérique choisi
-function restartWebcamIfOpen() {
-    if (webcamStream && document.getElementById('webcamModal').style.display === 'flex') {
-        startWebcamStream().catch(err => {
-            if (typeof showToast === 'function') showToast(window.cameraErrorMessage(err), 'warning', 6000);
-        });
-    }
-}
 
 // Fonctions pour la capture webcam
-async function openWebcamModal(imageField) {
+function openWebcamModal(imageField) {
     currentImageField = imageField;
-    webcamScanMode = false;
     const modal = document.getElementById('webcamModal');
-
+    const video = document.getElementById('webcamVideo');
+    
     modal.style.display = 'flex';
-
-    // Diagnostic : cause réelle du blocage
-    const diag = document.getElementById('webcamDiagnostic');
-    if (diag && typeof window.cameraDiagnostic === 'function') {
-        diag.innerHTML = 'Diagnostic…';
-        diag.style.display = 'block';
-        window.cameraDiagnostic().then(txt => { diag.innerHTML = txt; });
-    }
-
-    // Lister les webcams de la machine
-    const select = document.getElementById('webcamSelect');
-    if (select) {
-        select.value = '';
-        if (typeof window.remplirSelectCameras === 'function') {
-            window.remplirSelectCameras(select);
-        }
-    }
-
-    try {
-        await startWebcamStream();
-    } catch (err) {
-        console.error('Erreur webcam:', err);
-        if (typeof showToast === 'function') showToast(window.cameraErrorMessage(err), 'warning', 6000);
-        closeWebcamModal();
-        const fileInput = document.getElementById('image1Input');
-        if (fileInput) fileInput.click();
-    }
-}
-
-// Ouvre la même caméra produit en mode « Scanner par Photo » (analyse + dataset)
-async function openWebcamModalForScan() {
-    currentImageField = null;
-    webcamScanMode = true;
-    const modal = document.getElementById('webcamModal');
-
-    modal.style.display = 'flex';
-
-    // Diagnostic : cause réelle du blocage
-    const diag = document.getElementById('webcamDiagnostic');
-    if (diag && typeof window.cameraDiagnostic === 'function') {
-        diag.innerHTML = 'Diagnostic…';
-        diag.style.display = 'block';
-        window.cameraDiagnostic().then(txt => { diag.innerHTML = txt; });
-    }
-
-    const select = document.getElementById('webcamSelect');
-    if (select) {
-        select.value = '';
-        if (typeof window.remplirSelectCameras === 'function') {
-            window.remplirSelectCameras(select);
-        }
-    }
-
-    try {
-        await startWebcamStream();
-    } catch (err) {
-        console.error('Erreur webcam:', err);
-        if (typeof showToast === 'function') showToast(window.cameraErrorMessage(err), 'warning', 6000);
-        closeWebcamModal();
-        const fileInput = document.getElementById('stockFileInput');
-        if (fileInput) fileInput.click();
-    }
+    
+    // Accéder à la webcam
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(function(stream) {
+            webcamStream = stream;
+            video.srcObject = stream;
+        })
+        .catch(function(err) {
+            console.error('Erreur webcam:', err);
+            alert('Impossible d\'accéder à la webcam: ' + err.message);
+            closeWebcamModal();
+        });
 }
 
 function closeWebcamModal() {
@@ -532,7 +341,7 @@ function closeWebcamModal() {
     currentImageField = null;
 }
 
-async function captureWebcam() {
+function captureWebcam() {
     const video = document.getElementById('webcamVideo');
     const canvas = document.getElementById('webcamCanvas');
     
@@ -544,12 +353,6 @@ async function captureWebcam() {
     
     // Convertir en base64
     const imageData = canvas.toDataURL('image/jpeg', 0.8);
-
-    if (webcamScanMode) {
-        closeWebcamModal();
-        await analyseStockBlob(dataURLtoBlob(imageData), imageData);
-        return;
-    }
     
     // Afficher l'image capturée
     const previewDiv = document.getElementById(currentImageField + 'Preview');
@@ -560,288 +363,8 @@ async function captureWebcam() {
         <div style="color: var(--gray-500); font-size: 12px; margin-top: 8px;">Image capturée ✓</div>
     `;
     dataInput.value = imageData;
-
+    
     closeWebcamModal();
-
-    // La photo capturée alimente aussi l'analyse (pré-remplissage + dataset)
-    prefillProductFromCapture(imageData);
-}
-
-// Utilise l'image capturée à l'enregistrement pour pré-remplir code / référence / catégorie
-async function prefillProductFromCapture(imageData) {
-    if (!imageData) return;
-    const barcodeEl = document.getElementById('productBarcode');
-    const refEl = document.getElementById('productReference');
-    const catEl = document.getElementById('productCategory');
-    if (!barcodeEl || !refEl || !catEl) return;
-    if (barcodeEl.value || refEl.value || catEl.value) return;
-    try {
-        const form = new FormData();
-        form.append('image', dataURLtoBlob(imageData), 'capture.jpg');
-        const res = await fetch('/api/identification/analyse', { method: 'POST', body: form });
-        const data = await res.json();
-        if (!res.ok) return;
-        const detail = data.detail_analyse || {};
-        const codes = detail.codes || [];
-        const refs = (detail.ocr && detail.ocr.references) || [];
-        const yolo = detail.objets_yolo || [];
-        if (codes.length && !barcodeEl.value) barcodeEl.value = codes[0].data;
-        if (refs.length && !refEl.value) refEl.value = refs[0].texte;
-        if (yolo.length && !catEl.value) {
-            const label = (yolo[0].label || '').replace(/_/g, ' ');
-            catEl.value = label.charAt(0).toUpperCase() + label.slice(1);
-        }
-        if (codes.length || refs.length || yolo.length) {
-            if (typeof showToast === 'function') showToast('Code / référence pré-remplis depuis la photo', 'info', 2500);
-        }
-    } catch (e) {
-        console.error('Erreur analyse photo produit:', e);
-    }
-}
-
-// ─── Scanner Photo — Ajout au Stock (Identification / OCR / Code-barres) ───
-let lastStockScan = null;
-let lastStockImageData = null;
-
-function openStockScanner() {
-    document.getElementById('stockScannerModal').style.display = 'flex';
-    document.getElementById('stockScanResult').innerHTML = '';
-    document.getElementById('stockTextInput').value = '';
-}
-
-function closeStockScanner() {
-    document.getElementById('stockScannerModal').style.display = 'none';
-}
-
-function readFileAsDataURL(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
-}
-
-async function analyseStockFile(input) {
-    const file = input.files && input.files[0];
-    if (!file) return;
-    input.value = '';
-    const dataURL = await readFileAsDataURL(file);
-    await analyseStockBlob(file, dataURL);
-}
-
-async function analyseStockBlob(blob, dataURL) {
-    lastStockImageData = dataURL;
-    const container = document.getElementById('stockScanResult');
-    container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-500);"><div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem;"></div><p style="margin-top:12px;font-size:0.88rem;">Analyse en cours (code-barres + OCR + vision)...</p></div>';
-    try {
-        const form = new FormData();
-        form.append('image', blob, 'scan.jpg');
-        const response = await fetch('/api/identification/analyse', { method: 'POST', body: form });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Erreur lors de l\'analyse');
-        renderStockResult(container, data);
-    } catch (e) {
-        console.error(e);
-        container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);border:1px dashed var(--danger);border-radius:12px;">' + escapeHtml(e.message) + '</div>';
-    }
-}
-
-async function identifierStockTexte() {
-    const input = document.getElementById('stockTextInput');
-    const texte = input.value.trim();
-    if (!texte) return;
-    const container = document.getElementById('stockScanResult');
-    container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--gray-500);"><div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem;"></div><p style="margin-top:12px;font-size:0.88rem;">Recherche du produit...</p></div>';
-    try {
-        const response = await fetch('/api/identification/analyse', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ texte: texte })
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Erreur');
-        lastStockImageData = null;
-        renderStockResult(container, data);
-    } catch (e) {
-        console.error(e);
-        container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);border:1px dashed var(--danger);border-radius:12px;">' + escapeHtml(e.message) + '</div>';
-    }
-}
-
-function getMethodLabel(m) {
-    switch (m) {
-        case 'code-barres': return 'Code-barres';
-        case 'QR': return 'QR Code';
-        case 'ocr': return 'OCR texte';
-        case 'recherche': return 'Recherche texte';
-        case 'visuel': return 'Reconnaissance visuelle';
-        case 'yolo': return 'Vision (YOLO)';
-        default: return m || '-';
-    }
-}
-
-function escapeHtml(text) { return text ? String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : ''; }
-
-function renderStockResult(container, data) {
-    lastStockScan = data;
-    const alternates = data.alternatives || [];
-    const codes = (data.detail_analyse && data.detail_analyse.codes) || [];
-    const refs = (data.detail_analyse && data.detail_analyse.ocr && data.detail_analyse.ocr.references) || [];
-    const codeTxt = codes.length ? String(codes[0].data) : '';
-    const refTxt = refs.length ? String(refs[0].texte) : '';
-
-    if (data.determination === 'aucun' || alternates.length === 0) {
-        container.innerHTML = `
-            <div style="border:1px dashed var(--gray-300);border-radius:14px;padding:22px;text-align:center;color:var(--gray-600);">
-                <i class="bi bi-box-seam" style="font-size:2.2rem;display:block;margin-bottom:10px;color:var(--gray-400);"></i>
-                <p style="font-weight:800;margin-bottom:6px;">Aucun produit existant trouvé</p>
-                <p style="font-size:0.85rem;margin-bottom:14px;">
-                    ${codeTxt ? 'Code détecté : <strong>' + escapeHtml(codeTxt) + '</strong><br>' : ''}
-                    ${refTxt ? 'Référence détectée : <strong>' + escapeHtml(refTxt) + '</strong><br>' : ''}
-                    Créez un nouveau produit à partir de cette photo — code, référence et catégorie seront pré-remplis.
-                </p>
-                <button class="btn btn-primary" onclick="stockCreateNew()" style="border-radius:10px;font-weight:800;padding:10px 22px;"><i class="bi bi-plus-circle-fill me-1"></i> Créer ce produit</button>
-            </div>`;
-        return;
-    }
-
-    const det = data.determination;
-    const badgeStyle = det === 'certain' ? 'background:#d1fae5;color:#065f46;' : (det === 'probable' ? 'background:#fef3c7;color:#92400e;' : 'background:#fee2e2;color:#991b1b;');
-    const detLabel = det === 'certain' ? 'Certain' : (det === 'probable' ? 'Probable' : 'Incertain');
-    const conf = Math.round((data.confiance || 0) * 100);
-
-    let html = `
-        <div style="border:1px solid var(--gray-200);border-radius:14px;overflow:hidden;">
-            <div style="padding:13px 18px;background:var(--gray-100);border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
-                <span style="font-weight:800;color:var(--gray-900);">Produit identifié</span>
-                <span style="padding:5px 12px;border-radius:20px;font-size:0.78rem;font-weight:800;${badgeStyle}">${detLabel} &bull; ${conf}%</span>
-            </div>
-            <div style="padding:12px 18px;">`;
-
-    alternates.forEach((alt, i) => {
-        const p = alt.produit || {};
-        const imageUrl = p.image_url_1 || p.image_url_2 || '';
-        const priceDisplay = (p.devise === 'USD') ? '$ ' + p.prix_vente : formatCurrency(p.prix_vente, 'XAF');
-        html += `
-            <div style="padding:12px 0;${i > 0 ? 'border-top:1px solid var(--gray-100);' : ''}">
-                <div style="display:flex;gap:12px;align-items:center;">
-                    <div style="width:52px;height:52px;border-radius:10px;overflow:hidden;background:var(--gray-100);flex-shrink:0;border:1px solid var(--gray-200);display:flex;align-items:center;justify-content:center;">
-                        ${imageUrl ? `<img src="${imageUrl}" alt="" style="width:100%;height:100%;object-fit:cover;">` : '<i class="bi bi-box-seam" style="font-size:1.3rem;color:var(--gray-400);"></i>'}
-                    </div>
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-weight:700;color:var(--gray-900);font-size:0.92rem;">${escapeHtml(p.nom)}</div>
-                        <div style="font-size:0.78rem;color:var(--gray-500);">Ref: ${escapeHtml(p.reference || 'N/A')} &bull; ${priceDisplay} &bull; Stock: <strong>${p.quantite}</strong></div>
-                        <div style="margin-top:6px;display:flex;align-items:center;gap:8px;">
-                            <div style="flex:1;max-width:220px;height:6px;background:var(--gray-200);border-radius:4px;overflow:hidden;">
-                                <div style="width:${Math.min(100, Math.round(alt.confiance * 100))}%;height:100%;background:${alt.confiance >= 0.85 ? '#10b981' : (alt.confiance >= 0.60 ? '#f59e0b' : '#ef4444')};"></div>
-                            </div>
-                            <span style="font-size:0.75rem;font-weight:700;white-space:nowrap;">${Math.round(alt.confiance * 100)}% &bull; ${getMethodLabel(alt.methode)}</span>
-                        </div>
-                    </div>
-                    <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
-                        <button class="btn btn-success btn-sm" onclick="stockAddQuantity(${i})" style="border-radius:8px;font-weight:800;"><i class="bi bi-plus-circle-fill me-1"></i> Ajouter au stock</button>
-                        <button class="btn btn-outline-primary btn-sm" onclick="stockOpenProduct(${i})" style="border-radius:8px;font-weight:700;">Ouvrir la fiche</button>
-                    </div>
-                </div>
-            </div>`;
-    });
-
-    html += `</div></div>
-        <div style="margin-top:12px;display:flex;justify-content:center;">
-            <button class="btn btn-outline-secondary btn-sm" onclick="stockCreateNew()" style="border-radius:8px;font-weight:700;">
-                <i class="bi bi-plus-lg me-1"></i> Ce n'est pas un produit existant — créer un nouveau
-            </button>
-        </div>
-        <div style="margin-top:8px;font-size:0.75rem;color:var(--gray-500);text-align:center;">
-            Les choix du vendeur sont mémorisés pour améliorer les prochains scans.
-        </div>`;
-    container.innerHTML = html;
-}
-
-async function stockRecordCorrection(index, pid) {
-    const data = lastStockScan;
-    if (!data) return;
-    const alt = (data.alternatives || [])[index];
-    if (!alt) return;
-    const cles = data.cles_signature || [];
-    if (!cles.length) return;
-    if (index === 0 && data.determination === 'certain') return;
-    try {
-        await fetch('/api/identification/confirmer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cle_signature: cles[0] || '', produit_id: pid, methode: alt.methode || 'ocr' })
-        });
-    } catch (e) {
-        console.error('Erreur enregistrement correction:', e);
-    }
-}
-
-async function stockAddQuantity(index) {
-    const data = lastStockScan;
-    if (!data) return;
-    const alt = (data.alternatives || [])[index];
-    if (!alt || !alt.produit) return;
-    const p = alt.produit;
-    const qty = prompt('Quantité à ajouter au stock de "' + p.nom + '" :', '1');
-    if (qty === null || qty === '') return;
-    const n = parseInt(qty, 10);
-    if (isNaN(n) || n <= 0) {
-        if (typeof showToast === 'function') showToast('Quantité invalide', 'warning');
-        return;
-    }
-    try {
-        const response = await fetch(`/api/produits/${p.id}/reapprovisionner`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ quantite: n })
-        });
-        const result = await response.json();
-        if (response.ok) {
-            await stockRecordCorrection(index, p.id);
-            if (typeof showToast === 'function') showToast(result.message || 'Stock mis à jour', 'success');
-            loadProducts();
-            loadStockStatistics();
-        } else {
-            if (typeof showToast === 'function') showToast(result.message || 'Erreur', 'danger');
-        }
-    } catch (e) {
-        console.error(e);
-    }
-}
-
-function stockOpenProduct(index) {
-    const data = lastStockScan;
-    const pid = (data && data.alternatives && data.alternatives[index] && data.alternatives[index].produit) ? data.alternatives[index].produit.id : null;
-    if (pid) stockRecordCorrection(index, pid);
-    closeStockScanner();
-    editProduct(pid);
-}
-
-function stockCreateNew() {
-    const data = lastStockScan || {};
-    const codes = (data.detail_analyse && data.detail_analyse.codes) || [];
-    const refs = (data.detail_analyse && data.detail_analyse.ocr && data.detail_analyse.ocr.references) || [];
-    const yolo = (data.detail_analyse && data.detail_analyse.objets_yolo) || [];
-
-    closeStockScanner();
-
-    openProductModal();
-
-    if (codes.length) document.getElementById('productBarcode').value = codes[0].data;
-    if (refs.length) document.getElementById('productReference').value = refs[0].texte;
-    if (yolo.length) {
-        const label = (yolo[0].label || '').replace(/_/g, ' ');
-        document.getElementById('productCategory').value = label.charAt(0).toUpperCase() + label.slice(1);
-    }
-
-    if (lastStockImageData) {
-        document.getElementById('image1Data').value = lastStockImageData;
-        document.getElementById('image1Preview').innerHTML = '<img src="' + lastStockImageData + '" style="width:100%;height:100%;object-fit:cover;border-radius:8px;"><div style="color:var(--gray-500);font-size:12px;margin-top:8px;">Photo scannée ✓</div>';
-    }
-
-    if (typeof showToast === 'function') showToast('Formulaire pré-rempli depuis l\'analyse — complétez le nom et les prix', 'info', 3500);
 }
 
 // Charger les produits et statistiques
@@ -920,25 +443,69 @@ function debounce(func, wait) {
 }
 
 function updateQRCodePreview(reference) {
-    const qrPreview = document.getElementById('qrCodePreview');
-    const barcodeDisplay = document.getElementById('barcodeDisplay');
     if (!reference) {
-        qrPreview.innerHTML = '<span style="font-size: 24px;">📱</span>';
-        barcodeDisplay.style.display = 'none';
+        document.getElementById('qrCodePreview').innerHTML = '<span style="font-size: 24px;">📱</span>';
+        document.getElementById('barcodeDisplay').style.display = 'none';
         return;
     }
-
+    
+    const preview = document.getElementById('qrCodePreview');
     const qrSize = 150;
-    qrPreview.innerHTML = `<img src="/api/qrcode?data=${encodeURIComponent(reference)}&size=${qrSize}" alt="QR Code" style="width: ${qrSize}px; height: ${qrSize}px; border-radius: 4px; background: white; display: block;">`;
-
-    const barcodeEl = document.getElementById('productBarcode');
-    const barcodeValue = (barcodeEl && barcodeEl.value) ? barcodeEl.value : reference;
+    
+    // Générer un QR code visuel basique (pattern simple)
+    let qrSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" width="${qrSize}" height="${qrSize}" style="background: white; border: 2px solid #333;">`;
+    
+    // Pattern de QR code basique
+    const pattern = [
+        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1],
+        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,0,1,1,1,1,0,0,0,0,1],
+        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0,1,1,1,0,1],
+        [1,0,1,1,1,0,1,0,1,0,1,0,1,0,1,0,0,1,1,0,1,1,1,0,1],
+        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,1,0,0,0,1,1,1,0,1],
+        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1],
+        [0,0,0,0,0,0,0,0,1,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0],
+        [0,1,1,1,0,1,0,0,0,1,0,0,1,0,0,1,0,1,0,0,1,1,0,1,0],
+        [0,0,0,1,1,0,0,1,1,1,1,1,0,1,1,1,1,1,0,0,0,1,1,0,0],
+        [0,1,1,0,0,1,0,0,0,0,1,0,1,0,1,0,0,0,0,1,1,0,0,1,0],
+        [0,0,0,1,1,0,0,0,1,0,1,1,0,1,1,0,0,1,1,0,0,0,1,1,0],
+        [1,0,1,0,0,0,1,0,0,1,0,0,0,0,0,1,0,0,1,0,0,0,1,0,1],
+        [0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0,1,0,0,0,0,0,0,0,0],
+        [0,1,1,0,1,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,1,0,1,1,0],
+        [0,0,1,1,1,1,0,0,1,1,0,0,0,0,0,0,1,1,0,1,1,1,1,0,0],
+        [0,1,0,0,0,1,0,1,0,0,1,1,1,1,1,1,0,0,1,0,0,0,1,0,1],
+        [0,1,1,1,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,1,1,0,1],
+        [0,0,0,0,0,0,0,0,1,1,1,0,1,0,1,1,1,0,0,0,0,0,0,0,0],
+        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1],
+        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1],
+        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0,1,1,1,0,1],
+        [1,0,1,1,1,0,1,0,1,0,1,0,1,0,1,0,0,1,1,0,1,1,1,0,1],
+        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,1,0,0,0,1,1,1,0,1],
+        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1]
+    ];
+    
+    for (let y = 0; y < 25; y++) {
+        for (let x = 0; x < 25; x++) {
+            if (pattern[y][x] === 1) {
+                qrSVG += `<rect x="${x}" y="${y}" width="1" height="1" fill="black"/>`;
+            }
+        }
+    }
+    
+    qrSVG += '</svg>';
+    preview.innerHTML = qrSVG;
+    
+    // Afficher le code-barres à côté
+    const barcodeDisplay = document.getElementById('barcodeDisplay');
     barcodeDisplay.style.display = 'block';
     barcodeDisplay.innerHTML = `
-        <div style="font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px; font-weight: bold; color: #333; text-align: center; word-break: break-all;">
-            ${barcodeValue}
+        <div style="font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 1px; font-weight: bold; color: #333;">
+            ${reference}
         </div>
-        <img src="/api/barcode?data=${encodeURIComponent(barcodeValue)}" alt="Code-barres" style="width: 100%; max-width: 150px; height: auto; margin-top: 2px; background: white; border-radius: 4px; display: block;">
+        <div style="display: flex; gap: 1px; margin-top: 2px;">
+            ${generateBarcodePattern(reference)}
+        </div>
     `;
 }
 
@@ -965,13 +532,17 @@ async function loadStockStatistics() {
         
         document.getElementById('totalProducts').textContent = data.total_produits || 0;
         
-        const valCDF = data.valeur_stock_cdf || data.valeur_stock || 0;
-        const valUSD = data.valeur_stock_usd || 0;
-
-        const elFC = document.getElementById('totalStockValueFC');
-        const elUSD = document.getElementById('totalStockValueUSD');
-        if (elFC) elFC.textContent = formatCurrency(valCDF, 'CDF');
-        if (elUSD) elUSD.textContent = '$ ' + valUSD.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        // Afficher la valeur par devise
+        let valeurHtml = '';
+        if (data.valeur_par_devise) {
+            for (const [devise, valeur] of Object.entries(data.valeur_par_devise)) {
+                valeurHtml += `<div style="font-size: 0.85rem; color: var(--gray-600);">${formatCurrency(valeur, devise)}</div>`;
+            }
+        }
+        if (!valeurHtml) {
+            valeurHtml = formatCurrency(data.valeur_stock || 0);
+        }
+        document.getElementById('totalStockValue').innerHTML = valeurHtml;
         
         document.getElementById('lowStockCount').textContent = data.stock_faible || 0;
         document.getElementById('outOfStockCount').textContent = data.stock_epuise || 0;
@@ -1029,39 +600,6 @@ async function loadStockStatistics() {
             if (alertesContainer) {
                 alertesContainer.style.display = 'none';
                 localStorage.setItem('resolvedAlerts', JSON.stringify([]));
-            }
-        }
-
-        // Afficher les alertes d'expiration
-        const expirationContainer = document.getElementById('expirationAlerts');
-        if (expirationContainer) {
-            const activeExpirations = (data.alertes_expiration || []).filter(a => !(JSON.parse(localStorage.getItem('resolvedExpirations') || '[]')).includes(a.id));
-            if (activeExpirations.length > 0) {
-                expirationContainer.innerHTML = activeExpirations.map(alert => {
-                    const isExpired = alert.statut === 'expire';
-                    const bg = isExpired ? '#fee2e2' : '#fef3c7';
-                    const border = isExpired ? '#ef4444' : '#f59e0b';
-                    const icon = isExpired ? '⚠️ Expiré' : '⏳ Expire bientôt';
-                    return `
-                        <div id="alert-${alert.id}" style="background: ${bg}; border-left: 4px solid ${border}; padding: 12px; margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
-                            <div style="flex: 1;">
-                                <div style="font-weight: 500;">${icon} — ${alert.nom}</div>
-                                <div style="font-size: 0.85rem; color: var(--gray-600);">Réf: ${alert.reference} | Expire le: ${formatDateFr(alert.date_expiration)} | Stock: ${alert.quantite}</div>
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button onclick="markExpirationAlertAsRead('${alert.id}')" class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;" title="Marquer comme lu">
-                                    <i class="bi bi-check"></i>
-                                </button>
-                                <button onclick="deleteExpirationAlert('${alert.id}')" class="btn btn-danger" style="padding: 4px 8px; font-size: 12px;" title="Supprimer">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-                expirationContainer.style.display = 'block';
-            } else {
-                expirationContainer.style.display = 'none';
             }
         }
     } catch (error) {
@@ -1152,34 +690,6 @@ function deleteAlert(alertId) {
     }
 }
 
-function markExpirationAlertAsRead(alertId) {
-    let resolved = JSON.parse(localStorage.getItem('resolvedExpirations') || '[]');
-    if (!resolved.includes(alertId)) {
-        resolved.push(alertId);
-        localStorage.setItem('resolvedExpirations', JSON.stringify(resolved));
-    }
-    const alertElement = document.getElementById(`alert-${alertId}`);
-    if (alertElement) {
-        alertElement.style.opacity = '0.5';
-        alertElement.style.background = '#f3f4f6';
-    }
-}
-
-function deleteExpirationAlert(alertId) {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette alerte ?')) return;
-    let resolved = JSON.parse(localStorage.getItem('resolvedExpirations') || '[]');
-    resolved = resolved.filter(id => id !== alertId);
-    localStorage.setItem('resolvedExpirations', JSON.stringify(resolved));
-    const alertElement = document.getElementById(`alert-${alertId}`);
-    if (alertElement) {
-        alertElement.remove();
-    }
-    const container = document.getElementById('expirationAlerts');
-    if (container && container.children.length === 0) {
-        container.style.display = 'none';
-    }
-}
-
 async function loadProducts() {
     console.log('Chargement des produits...');
     try {
@@ -1215,13 +725,13 @@ function renderProductsTable(products) {
     const tbody = document.getElementById('productsTableBody');
     
     if (products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; color: var(--gray-500); padding: 40px;"><i class="bi bi-box-seam" style="font-size: 2rem; margin-bottom: 16px;"></i><p>Aucun produit en stock</p></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--gray-500); padding: 40px;"><i class="bi bi-box-seam" style="font-size: 2rem; margin-bottom: 16px;"></i><p>Aucun produit en stock</p></td></tr>';
         return;
     }
     
     tbody.innerHTML = products.map(product => {
         const status = getStockStatus(product.quantite, product.stock_min);
-        const dateAjout = product.created_at ? new Date(product.created_at).toLocaleDateString('fr-FR') : '-';
+        const dateAjout = product.date_creation ? new Date(product.date_creation).toLocaleDateString('fr-FR') : '-';
         
         return '<tr data-product-id="' + product.id + '">' +
             '<td>' +
@@ -1230,36 +740,27 @@ function renderProductsTable(products) {
                 '</div>' +
             '</td>' +
             '<td>' +
-                truncateCell(product.nom, 180, 'font-weight: 500;') +
-                '<div style="font-size: 12px; color: var(--gray-500);">' + truncateCell(product.fournisseur || '', 180) + '</div>' +
+                '<div style="font-weight: 500;">' + product.nom + '</div>' +
+                '<div style="font-size: 12px; color: var(--gray-500);">' + (product.fournisseur || '') + '</div>' +
             '</td>' +
-            '<td>' + truncateCell(product.reference, 130, "font-family: 'Courier New', monospace; font-size: 12px;") + '</td>' +
-            '<td>' + truncateCell(product.code_barres, 130, "font-family: 'Courier New', monospace; font-size: 12px;") + '</td>' +
-            '<td>' + truncateCell(product.categorie || '-', 120) + '</td>' +
-            '<td style="white-space: nowrap;">' + formatCurrency(product.prix_achat, product.devise) + '</td>' +
-            '<td style="white-space: nowrap;">' + formatCurrency(product.prix_vente, product.devise) + '</td>' +
-            '<td style="white-space: nowrap; text-align: center;">' + product.quantite + '</td>' +
-            '<td style="white-space: nowrap; font-weight: 600;">' + formatCurrency((product.prix_achat || 0) * (product.quantite || 0), product.devise) + '</td>' +
-            '<td style="white-space: nowrap; font-weight: 600;">' + formatCurrency((product.prix_vente || 0) * (product.quantite || 0), product.devise) + '</td>' +
-            '<td>' + renderExpirationCell(product) + '</td>' +
-            '<td style="font-size: 12px; color: var(--gray-600); white-space: nowrap;">' + dateAjout + '</td>' +
+            '<td style="font-family: \'Courier New\', monospace; font-size: 12px;">' + product.reference + '</td>' +
+            '<td style="font-family: \'Courier New\', monospace; font-size: 12px;">' + product.code_barres + '</td>' +
+            '<td>' + (product.categorie || '-') + '</td>' +
+            '<td>' + formatCurrency(product.prix_achat, product.devise) + '</td>' +
+            '<td>' + formatCurrency(product.prix_vente, product.devise) + '</td>' +
+            '<td>' + product.quantite + '</td>' +
+            '<td style="font-size: 12px; color: var(--gray-600);">' + dateAjout + '</td>' +
             '<td><span style="' + getStockStatusStyle(status) + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>' +
             '<td>' +
-                '<div style="display: flex; gap: 4px; justify-content: center;">' +
-                    '<button onclick="generateQRCode(\'' + product.reference + '\')" class="btn btn-secondary" style="padding: 3px 4px; font-size: 12px;" title="QR Code"><i class="bi bi-qr-code"></i></button>' +
-                    '<button onclick="generateBarcode(\'' + product.code_barres + '\')" class="btn btn-secondary" style="padding: 3px 4px; font-size: 12px;" title="Code-barres"><i class="bi bi-upc-scan"></i></button>' +
-                    '<button onclick="editProduct(' + product.id + ')" class="btn btn-secondary" style="padding: 3px 4px; font-size: 12px;" title="Modifier"><i class="bi bi-pencil"></i></button>' +
-                    '<button onclick="deleteProduct(' + product.id + ')" class="btn btn-danger" style="padding: 3px 4px; font-size: 12px;" title="Supprimer"><i class="bi bi-trash"></i></button>' +
+                '<div style="display: flex; gap: 8px;">' +
+                    '<button onclick="generateQRCode(\'' + product.reference + '\')" class="btn btn-secondary" style="padding: 4px 8px;" title="QR Code"><i class="bi bi-qr-code"></i></button>' +
+                    '<button onclick="generateBarcode(\'' + product.code_barres + '\')" class="btn btn-secondary" style="padding: 4px 8px;" title="Code-barres"><i class="bi bi-upc-scan"></i></button>' +
+                    '<button onclick="editProduct(' + product.id + ')" class="btn btn-secondary" style="padding: 4px 8px;" title="Modifier"><i class="bi bi-pencil"></i></button>' +
+                    '<button onclick="deleteProduct(' + product.id + ')" class="btn btn-danger" style="padding: 4px 8px;" title="Supprimer"><i class="bi bi-trash"></i></button>' +
                 '</div>' +
             '</td>' +
         '</tr>';
     }).join('');
-}
-
-function truncateCell(text, maxWidth, extraStyle = '') {
-    const full = (text === null || text === undefined) ? '' : String(text);
-    const escaped = full.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    return '<div style="max-width: ' + maxWidth + 'px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; ' + extraStyle + '" title="' + escaped + '">' + escaped + '</div>';
 }
 
 function getStockStatusStyle(status) {
@@ -1275,30 +776,6 @@ function getStockStatusStyle(status) {
     }
 }
 
-function renderExpirationCell(product) {
-    if (!product.est_perissable) return '-';
-    if (!product.date_expiration) return '<span style="color: var(--gray-500);">Non définie</span>';
-    return '<span style="' + getExpirationStyle(product.date_expiration) + '">' + formatDateFr(product.date_expiration) + '</span>';
-}
-
-function getExpirationStyle(dateStr) {
-    const dateExp = new Date(dateStr + 'T00:00:00');
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const seuil = new Date(today);
-    seuil.setDate(seuil.getDate() + 30);
-    if (dateExp < today) return 'background: #fee2e2; color: #991b1b; font-weight: 500; padding: 2px 8px; border-radius: 4px;';
-    if (dateExp <= seuil) return 'background: #fef3c7; color: #92400e; font-weight: 500; padding: 2px 8px; border-radius: 4px;';
-    return 'padding: 2px 8px; border-radius: 4px;';
-}
-
-function formatDateFr(dateStr) {
-    if (!dateStr) return '-';
-    const parts = dateStr.split('-');
-    if (parts.length === 3) return parts[2] + '/' + parts[1] + '/' + parts[0];
-    return dateStr;
-}
-
 function formatCurrency(amount, currency = 'XAF') {
     const formatted = new Intl.NumberFormat('fr-FR', {
         style: 'currency',
@@ -1312,66 +789,104 @@ async function exportStockSheet() {
         const response = await fetch('/api/produits');
         const data = await response.json();
         const products = data.produits || [];
-
-        const entreprise = await chargerParamsEntreprise();
-
-        let corps = genererEnTeteEtat(entreprise, 'Fiche de stock', { reference: 'État complet des stocks et inventaire' });
-
-        corps += '<table class="etat-table"><thead><tr>';
-        corps += '<th>Produit</th><th>Référence</th><th>Catégorie</th><th>Date Ajout</th><th class="num">Prix Achat</th><th class="num">Prix Vente</th><th class="num">Quantité</th><th class="num">Valeur Stock</th><th>Statut</th>';
-        corps += '</tr></thead><tbody>';
-
+        
+        const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const now = new Date().toLocaleTimeString('fr-FR');
+        
+        let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fiche de Stock - ' + today + '</title><style>';
+        html += '@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");';
+        html += 'body { font-family: "Roboto", Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; color: #333; }';
+        html += '.container { max-width: 1400px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }';
+        html += '.header { text-align: center; border-bottom: 4px solid #2c3e50; padding-bottom: 25px; margin-bottom: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; margin: -40px -40px 30px -40px; }';
+        html += '.header h1 { color: white; margin: 0; font-size: 32px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; }';
+        html += '.header p { color: rgba(255,255,255,0.9); margin: 10px 0 0; font-size: 16px; }';
+        html += '.header .date { font-size: 14px; margin-top: 5px; opacity: 0.8; }';
+        html += 'table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }';
+        html += 'th { background: #2c3e50; color: white; padding: 15px 12px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }';
+        html += 'td { padding: 12px; border-bottom: 1px solid #e9ecef; vertical-align: middle; }';
+        html += 'tr:nth-child(even) { background: #f8f9fa; }';
+        html += 'tr:hover { background: #e9ecef; }';
+        html += '.product-image { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 2px solid #dee2e6; }';
+        html += '.qr-code { width: 50px; height: 50px; border: 1px solid #dee2e6; }';
+        html += '.status-disponible { background: #d4edda; color: #155724; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 11px; }';
+        html += '.status-faible { background: #fff3cd; color: #856404; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 11px; }';
+        html += '.status-épuisé { background: #f8d7da; color: #721c24; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 11px; }';
+        html += '.summary { margin-top: 40px; padding: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; }';
+        html += '.summary h3 { margin: 0 0 25px; color: white; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; }';
+        html += '.summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }';
+        html += '.summary-item { background: rgba(255,255,255,0.15); padding: 25px; border-radius: 10px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); }';
+        html += '.summary-item strong { display: block; color: rgba(255,255,255,0.8); font-size: 13px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }';
+        html += '.summary-item span { font-size: 32px; font-weight: 700; color: white; }';
+        html += '.summary-item .unit { font-size: 14px; font-weight: 400; opacity: 0.8; }';
+        html += '.calculations { margin-top: 30px; padding: 25px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid #667eea; }';
+        html += '.calculations h4 { margin: 0 0 20px; color: #2c3e50; font-size: 18px; }';
+        html += '.calc-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #dee2e6; }';
+        html += '.calc-row:last-child { border-bottom: none; }';
+        html += '.calc-label { font-weight: 500; color: #495057; }';
+        html += '.calc-value { font-weight: 700; color: #2c3e50; }';
+        html += '.calc-total { background: #667eea; color: white; padding: 15px; border-radius: 8px; font-weight: 700; font-size: 16px; margin-top: 15px; }';
+        html += '.footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #e9ecef; text-align: center; color: #6c757d; font-size: 12px; }';
+        html += '@media print { body { background: white; } .container { box-shadow: none; } .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .summary { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }';
+        html += '</style></head><body><div class="container">';
+        html += '<div class="header"><h1>📦 FICHE DE STOCK</h1><p>État complet des stocks et inventaire</p><div class="date">📅 ' + today + ' à ' + now + '</div></div>';
+        
+        html += '<table><thead><tr><th>Image</th><th>Produit</th><th>Référence</th><th>Code QR</th><th>Catégorie</th><th>Date Ajout</th><th>Prix Achat</th><th>Prix Vente</th><th>Quantité</th><th>Valeur Stock</th><th>Statut</th></tr></thead><tbody>';
+        
         let totalValue = 0;
         products.forEach(product => {
             const status = getStockStatus(product.quantite, product.stock_min);
-            const statusClass = status === 'épuisé' ? 'epuise' : status;
-            const dateAjout = product.created_at ? new Date(product.created_at).toLocaleDateString('fr-FR') : '-';
+            const dateAjout = product.date_creation ? new Date(product.date_creation).toLocaleDateString('fr-FR') : '-';
             const stockValue = product.prix_achat * product.quantite;
             totalValue += stockValue;
-
-            corps += '<tr>';
-            corps += '<td><strong>' + escHtmlEtats(product.nom) + '</strong>' + (product.fournisseur ? '<br><small style="color:#64748b;">' + escHtmlEtats(product.fournisseur) + '</small>' : '') + '</td>';
-            corps += '<td style="font-family:monospace;">' + escHtmlEtats(product.reference) + '</td>';
-            corps += '<td>' + escHtmlEtats(product.categorie || '-') + '</td>';
-            corps += '<td>' + dateAjout + '</td>';
-            corps += '<td class="num">' + formatCurrency(product.prix_achat, product.devise) + '</td>';
-            corps += '<td class="num">' + formatCurrency(product.prix_vente, product.devise) + '</td>';
-            corps += '<td class="num gras">' + product.quantite + '</td>';
-            corps += '<td class="num gras">' + formatCurrency(stockValue, product.devise) + '</td>';
-            corps += '<td><span class="etat-badge ' + statusClass + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
-            corps += '</tr>';
+            
+            html += '<tr>';
+            html += '<td>' + (product.image_url_1 ? '<img src="' + product.image_url_1 + '" class="product-image">' : '<div style="width: 60px; height: 60px; background: #e9ecef; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #adb5bd;">📦</div>') + '</td>';
+            html += '<td><strong>' + product.nom + '</strong><br><small style="color: #6c757d;">' + (product.fournisseur || '') + '</small></td>';
+            html += '<td style="font-family: monospace; background: #f8f9fa; padding: 8px; border-radius: 4px;">' + product.reference + '</td>';
+            html += '<td><div style="width: 50px; height: 50px; background: white; border: 2px solid #2c3e50; display: flex; align-items: center; justify-content: center; font-size: 10px; border-radius: 4px;">QR</div></td>';
+            html += '<td>' + (product.categorie || '-') + '</td>';
+            html += '<td>' + dateAjout + '</td>';
+            html += '<td>' + formatCurrency(product.prix_achat, product.devise) + '</td>';
+            html += '<td>' + formatCurrency(product.prix_vente, product.devise) + '</td>';
+            html += '<td style="font-weight: 700; font-size: 14px;">' + product.quantite + '</td>';
+            html += '<td style="font-weight: 700; color: #667eea;">' + formatCurrency(stockValue, product.devise) + '</td>';
+            html += '<td><span class="status-' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span></td>';
+            html += '</tr>';
         });
-
+        
         const totalProducts = products.length;
         const totalQuantity = products.reduce((sum, p) => sum + p.quantite, 0);
         const lowStock = products.filter(p => p.quantite <= p.stock_min).length;
         const outOfStock = products.filter(p => p.quantite === 0).length;
         const availableStock = products.filter(p => p.quantite > p.stock_min).length;
-        const averagePrice = (products.length > 0 && totalQuantity > 0) ? totalValue / totalQuantity : 0;
-
-        corps += '</tbody></table>';
-
-        corps += '<div class="etat-box"><h4>📊 Calculs détaillés du stock</h4>';
-        corps += '<div class="etat-row"><span>Nombre total de produits</span><span class="gras">' + totalProducts + ' articles</span></div>';
-        corps += '<div class="etat-row"><span>Quantité totale en stock</span><span class="gras">' + totalQuantity + ' unités</span></div>';
-        corps += '<div class="etat-row"><span>Stock disponible</span><span class="gras">' + availableStock + ' articles</span></div>';
-        corps += '<div class="etat-row"><span>Stock faible</span><span class="gras">' + lowStock + ' articles</span></div>';
-        corps += '<div class="etat-row"><span>Stock épuisé</span><span class="gras">' + outOfStock + ' articles</span></div>';
-        corps += '<div class="etat-row"><span>Prix moyen par unité</span><span class="gras">' + formatCurrency(averagePrice) + '</span></div>';
-        corps += '<div class="etat-total">Valeur totale du stock : ' + formatCurrency(totalValue) + '</div>';
-        corps += '</div>';
-
-        corps += '<div class="etat-box"><h4>📈 Résumé général</h4>';
-        corps += '<div class="etat-row"><span>Total Produits</span><span class="gras">' + totalProducts + ' articles</span></div>';
-        corps += '<div class="etat-row"><span>Quantité Totale</span><span class="gras">' + totalQuantity + ' unités</span></div>';
-        corps += '<div class="etat-row"><span>Valeur Totale</span><span class="gras">' + formatCurrency(totalValue) + '</span></div>';
-        corps += '<div class="etat-row"><span>Alertes Stock</span><span class="gras">' + (lowStock + outOfStock) + ' articles</span></div>';
-        corps += '</div>';
-
-        corps += '<div class="etat-footer">' + escHtmlEtats(entreprise.nom_entreprise || 'MotoStockIA') + ' — Fiche de stock — Système de Gestion de Stock</div>';
-
-        ouvrirDocumentImpression('Fiche de stock', corps, entreprise);
-
+        const averagePrice = products.length > 0 ? totalValue / totalQuantity : 0;
+        
+        html += '</tbody></table>';
+        
+        html += '<div class="calculations"><h4>📊 CALCULS DÉTAILLÉS DU STOCK</h4>';
+        html += '<div class="calc-row"><span class="calc-label">Nombre total de produits</span><span class="calc-value">' + totalProducts + ' articles</span></div>';
+        html += '<div class="calc-row"><span class="calc-label">Quantité totale en stock</span><span class="calc-value">' + totalQuantity + ' unités</span></div>';
+        html += '<div class="calc-row"><span class="calc-label">Stock disponible</span><span class="calc-value">' + availableStock + ' articles</span></div>';
+        html += '<div class="calc-row"><span class="calc-label">Stock faible</span><span class="calc-value">' + lowStock + ' articles</span></div>';
+        html += '<div class="calc-row"><span class="calc-label">Stock épuisé</span><span class="calc-value">' + outOfStock + ' articles</span></div>';
+        html += '<div class="calc-row"><span class="calc-label">Prix moyen par unité</span><span class="calc-value">' + formatCurrency(averagePrice) + '</span></div>';
+        html += '<div class="calc-total">💰 VAUR TOTALE DU STOCK: ' + formatCurrency(totalValue) + '</div>';
+        html += '</div>';
+        
+        html += '<div class="summary"><h3>📈 RÉSUMÉ GÉNÉRAL</h3><div class="summary-grid">';
+        html += '<div class="summary-item"><strong>Total Produits</strong><span>' + totalProducts + '</span><span class="unit">articles</span></div>';
+        html += '<div class="summary-item"><strong>Quantité Totale</strong><span>' + totalQuantity + '</span><span class="unit">unités</span></div>';
+        html += '<div class="summary-item"><strong>Valeur Totale</strong><span>' + formatCurrency(totalValue) + '</span><span class="unit">stock</span></div>';
+        html += '<div class="summary-item"><strong>Alertes Stock</strong><span>' + (lowStock + outOfStock) + '</span><span class="unit">articles</span></div>';
+        html += '</div></div>';
+        
+        html += '<div class="footer"><p>Document généré automatiquement le ' + today + ' à ' + now + '</p><p>Système de Gestion de Stock © 2024</p></div>';
+        html += '</div><script>window.onload = function() { window.print(); };<\/script></body></html>';
+        
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(html);
+        printWindow.document.close();
+        
     } catch (error) {
         console.error('Erreur lors de l\'export:', error);
         alert('Erreur lors de la génération de la fiche de stock');
@@ -1531,9 +1046,6 @@ function openProductModal(productId = null) {
         // Réinitialiser le formulaire seulement pour un nouveau produit
         document.getElementById('productForm').reset();
         document.getElementById('productId').value = '';
-        document.getElementById('productPerishable').checked = false;
-        document.getElementById('productExpiration').value = '';
-        document.getElementById('expirationField').style.display = 'none';
         
         // Réinitialiser les prévisualisations d'images
         document.getElementById('image1Preview').innerHTML = `
@@ -1573,14 +1085,6 @@ function closeProductModal() {
     document.body.style.overflow = '';
 }
 
-function toggleExpirationField() {
-    const checked = document.getElementById('productPerishable').checked;
-    document.getElementById('expirationField').style.display = checked ? 'block' : 'none';
-    const input = document.getElementById('productExpiration');
-    if (!checked) input.value = '';
-    input.required = checked;
-}
-
 async function saveProduct() {
     const productId = document.getElementById('productId').value;
     const isEdit = productId !== '';
@@ -1598,8 +1102,6 @@ async function saveProduct() {
     formData.append('prix_vente', document.getElementById('productSalePrice').value);
     formData.append('quantite', document.getElementById('productQuantity').value);
     formData.append('stock_min', document.getElementById('productMinStock').value);
-    formData.append('est_perissable', document.getElementById('productPerishable').checked ? '1' : '0');
-    formData.append('date_expiration', document.getElementById('productExpiration').value || '');
     formData.append('compatibilites', document.getElementById('productCompatibilities').value);
     
     // Gérer les images : priorité à l'upload, sinon capture webcam
@@ -1643,7 +1145,11 @@ async function saveProduct() {
             loadProducts();
             loadStockStatistics();
             
-            alert(result.message || (result.existant ? 'Produit existant mis à jour !' : 'Produit enregistré avec succès'));
+            if (result.existant) {
+                alert('⚠️ Produit existant mis à jour !\n\nUn produit avec les mêmes détails existait déjà. La quantité a été ajoutée au stock existant.');
+            } else {
+                alert('Produit enregistré avec succès');
+            }
         } else {
             alert(result.message || 'Erreur lors de la sauvegarde');
         }
@@ -1706,8 +1212,8 @@ function generateBarcode(codeBarres) {
                 <div style="font-family: 'Courier New', monospace; font-size: 28px; letter-spacing: 4px; font-weight: bold; color: #333; margin-bottom: 24px; padding: 16px; background: var(--gray-100); border-radius: 8px;">
                     ${codeBarres}
                 </div>
-                <div style="display: flex; justify-content: center; margin-top: 24px; padding: 20px; background: white; border: 3px solid #333; border-radius: 8px;">
-                    <img src="/api/barcode?data=${encodeURIComponent(codeBarres)}" alt="Code-barres" style="max-width: 100%; height: auto; display: block;">
+                <div style="display: flex; justify-content: center; gap: 2px; margin-top: 24px; padding: 20px; background: white; border: 3px solid #333; border-radius: 8px;">
+                    ${generateBarcodePattern(codeBarres)}
                 </div>
             </div>
             <div style="text-align: center; margin-top: 24px; color: #666; font-size: 16px; margin-bottom: 20px;">
@@ -1730,9 +1236,50 @@ function generateQRCode(reference) {
         return;
     }
     
-    // Générer un vrai QR code contenant la référence (scannable)
+    // Générer un QR code visuel basique
     const qrSize = 300;
-    const qrImage = `<img src="/api/qrcode?data=${encodeURIComponent(reference)}&size=${qrSize}" alt="QR Code" style="width: ${qrSize}px; height: ${qrSize}px; background: white; display: block;">`;
+    
+    let qrSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" width="${qrSize}" height="${qrSize}" style="background: white; border: 3px solid #333;">`;
+    
+    // Pattern de QR code basique
+    const pattern = [
+        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1],
+        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,0,1,1,1,1,0,0,0,0,1],
+        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0,1,1,1,0,1],
+        [1,0,1,1,1,0,1,0,1,0,1,0,1,0,1,0,0,1,1,0,1,1,1,0,1],
+        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,1,0,0,0,1,1,1,0,1],
+        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1],
+        [0,0,0,0,0,0,0,0,1,0,1,0,0,0,1,0,0,0,1,0,0,0,0,0,0],
+        [0,1,1,1,0,1,0,0,0,1,0,0,1,0,0,1,0,1,0,0,1,1,0,1,0],
+        [0,0,0,1,1,0,0,1,1,1,1,1,0,1,1,1,1,1,0,0,0,1,1,0,0],
+        [0,1,1,0,0,1,0,0,0,0,1,0,1,0,1,0,0,0,0,1,1,0,0,1,0],
+        [0,0,0,1,1,0,0,0,1,0,1,1,0,1,1,0,0,1,1,0,0,0,1,1,0],
+        [1,0,1,0,0,0,1,0,0,1,0,0,0,0,0,1,0,0,1,0,0,0,1,0,1],
+        [0,0,0,0,0,0,0,0,1,0,1,0,1,0,1,0,1,0,0,0,0,0,0,0,0],
+        [0,1,1,0,1,1,0,1,0,0,0,1,0,1,0,0,0,1,0,1,1,0,1,1,0],
+        [0,0,1,1,1,1,0,0,1,1,0,0,0,0,0,0,1,1,0,1,1,1,1,0,0],
+        [0,1,0,0,0,1,0,1,0,0,1,1,1,1,1,1,0,0,1,0,0,0,1,0,1],
+        [0,1,1,1,0,0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,1,1,0,1],
+        [0,0,0,0,0,0,0,0,1,1,1,0,1,0,1,1,1,0,0,0,0,0,0,0,0],
+        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1],
+        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1],
+        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,0,1,0,0,1,1,1,0,1],
+        [1,0,1,1,1,0,1,0,1,0,1,0,1,0,1,0,0,1,1,0,1,1,1,0,1],
+        [1,0,1,1,1,0,1,0,0,1,0,0,1,0,0,1,1,0,0,0,1,1,1,0,1],
+        [1,0,0,0,0,0,1,0,1,1,1,0,1,0,1,1,1,0,1,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,1,1,1,1,1,1]
+    ];
+    
+    for (let y = 0; y < 25; y++) {
+        for (let x = 0; x < 25; x++) {
+            if (pattern[y][x] === 1) {
+                qrSVG += `<rect x="${x}" y="${y}" width="1" height="1" fill="black"/>`;
+            }
+        }
+    }
+    
+    qrSVG += '</svg>';
     
     const modal = document.createElement('div');
     modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 2000; display: flex; justify-content: center; align-items: center; cursor: pointer;';
@@ -1740,7 +1287,7 @@ function generateQRCode(reference) {
         <div style="background: white; border-radius: 16px; padding: 32px; text-align: center; max-width: 500px; cursor: default;" onclick="event.stopPropagation()">
             <h3 style="margin-bottom: 20px; color: #333;">QR Code - Référence du Produit</h3>
             <div style="background: white; border: 3px solid #333; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; border-radius: 8px; padding: 20px;">
-                ${qrImage}
+                ${qrSVG}
             </div>
             <p style="font-family: 'Courier New', monospace; background: var(--gray-100); padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 18px; font-weight: bold; color: #333; letter-spacing: 2px;">${reference}</p>
             <div style="font-size: 14px; color: #666; margin-bottom: 16px;">
@@ -1798,10 +1345,6 @@ async function editProduct(productId, viewOnly = false) {
             document.getElementById('productSalePrice').value = product.prix_vente;
             document.getElementById('productQuantity').value = product.quantite;
             document.getElementById('productMinStock').value = product.stock_min;
-            document.getElementById('productPerishable').checked = !!product.est_perissable;
-            document.getElementById('productExpiration').value = product.date_expiration || '';
-            document.getElementById('productExpiration').required = !!product.est_perissable;
-            toggleExpirationField();
             document.getElementById('productCompatibilities').value = product.compatibilites || '';
             
             // Réinitialiser les prévisualisations d'images avant d'afficher les nouvelles

@@ -66,6 +66,52 @@ def login_required(f):
     return decorated_function
 
 
+def _current_user():
+    """Utilisateur connecté depuis la session (ou None)."""
+    user_id = session.get('user_id')
+    if not user_id:
+        return None
+    return User.query.get(user_id)
+
+
+def _refuser(message='Accès refusé. Vous n\'avez pas les permissions nécessaires.'):
+    """Réponse d'accès refusé selon le type de requête (page ou API)."""
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'message': message}), 403
+    flash(message, 'error')
+    return redirect(url_for('main.dashboard'))
+
+
+def admin_required(f):
+    """Décorateur : réserve la route aux administrateurs."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = _current_user()
+        if not user or user.role != 'admin':
+            return _refuser('Accès réservé aux administrateurs.')
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def permission_required(module, action='view'):
+    """Décorateur : exige la permission <action> sur le <module>.
+    Un administrateur dispose de toutes les permissions."""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            user = _current_user()
+            if not user:
+                if request.path.startswith('/api/'):
+                    return jsonify({'success': False, 'message': 'Non connecté'}), 401
+                flash('Veuillez vous connecter pour accéder à cette page.', 'warning')
+                return redirect(url_for('auth.login'))
+            if not user.has_perm(module, action):
+                return _refuser('Vous n\'avez pas la permission d\'effectuer cette action.')
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     """Page de connexion"""

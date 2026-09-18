@@ -1,7 +1,7 @@
 """
 Package principal de l'application
 """
-from flask import Flask
+from flask import Flask, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import os
@@ -79,11 +79,21 @@ def create_app():
     from app.routes.auth import auth_bp
     from app.routes.main import main_bp
     from app.routes.api import api_bp
+    from app.routes.backup import backup_bp
     
     # Enregistrement des blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(backup_bp)
+
+    # Injection de l'utilisateur courant dans tous les templates
+    @app.context_processor
+    def inject_user():
+        from app.models.user import User, ROLE_LABELS
+        user_id = session.get('user_id')
+        user = User.query.get(user_id) if user_id else None
+        return {'current_user': user, 'ROLE_LABELS': ROLE_LABELS}
     
     # Création des tables
     with app.app_context():
