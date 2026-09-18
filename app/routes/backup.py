@@ -65,9 +65,13 @@ def _masked_status(cfg):
         'site_username': cfg.get('site_username') or 'admin',
         'has_site_password': bool(cfg.get('site_password')),
         'auto_site': bool(cfg.get('auto_site')),
+        'auto_web': bool(cfg.get('auto_web', True)),
         'last_site_upload_at': cfg.get('last_site_upload_at'),
         'last_site_status': cfg.get('last_site_status'),
         'last_site_error': cfg.get('last_site_error'),
+        'last_site_pull_at': cfg.get('last_site_pull_at'),
+        'last_site_pull_status': cfg.get('last_site_pull_status'),
+        'last_site_pull_error': cfg.get('last_site_pull_error'),
     }
 
 
@@ -271,6 +275,8 @@ def backup_config():
         cfg['site_password'] = str(data['site_password'])
     if 'auto_site' in data and data.get('auto_site') is not None:
         cfg['auto_site'] = bool(data['auto_site'])
+    if 'auto_web' in data and data.get('auto_web') is not None:
+        cfg['auto_web'] = bool(data['auto_web'])
 
     if not cfg.get('owner') or not cfg.get('repo'):
         return jsonify({'success': False, 'message': 'Le nom d\'utilisateur GitHub et le dépôt sont obligatoires.'}), 400
@@ -413,6 +419,74 @@ def backup_upload():
         shutil.rmtree(tmpdir, ignore_errors=True)
 
     return jsonify({'success': True, 'message': 'Base fusionnée sur le site en ligne avec succès.', 'sync': sync_status()})
+
+
+@backup_bp.route('/api/backup/pull-site', methods=['POST'])
+@permission_required('settings', 'update')
+def backup_pull_site():
+    """Côté ordinateur : récupère la base du site en ligne et la fusionne dans la base locale."""
+    from app.autosync import _download_from_site
+    from app.sync import apply_backup_file, sync_status
+    cfg = _load_config()
+    now = datetime.now().isoformat(timespec='seconds')
+    fpath = None
+    try:
+        fpath = _download_from_site(cfg)
+        apply_backup_file(fpath)
+    except Exception as e:
+        cfg['last_site_pull_at'] = now
+        cfg['last_site_pull_status'] = 'error'
+        cfg['last_site_pull_error'] = str(e)
+        try:
+            _save_config(cfg)
+        except RuntimeError:
+            pass
+        return jsonify({
+            'success': False,
+            'message': 'La récupération depuis le site a échoué. Vous pouvez réessayer.',
+            'error': str(e),
+            'last_site_pull_at': now,
+            'last_site_pull_status': 'error',
+            'sync': sync_status(),
+        }), 500
+    finally:
+        if fpath and os.path.exists(fpath):
+            try:
+                os.remove(fpath)
+            except OSError:
+                pass
+
+    cfg['last_site_pull_at'] = now
+    cfg['last_site_pull_status'] = 'ok'
+    cfg.pop('last_site_pull_error', None)
+    try:
+        _save_config(cfg)
+    except RuntimeError:
+        pass
+
+    return jsonify({
+        'success': True,
+        'message': 'Base récupérée depuis le site et fusionnée sur l\'ordinateur avec succès',
+        'last_site_pull_at': now,
+        'last_site_pull_status': 'ok',
+        'sync': sync_status(),
+    })
+
+
+@backup_bp.route('/api/backup/download', methods=['GET'])
+@permission_required('settings', 'update')
+def backup_download():
+    """Côté site en ligne : télécharge la base actuelle (pour la fusion côté ordinateur)."""
+    from flask import after_this_request, send_file
+    snapshot, tmpdir = _build_snapshot()
+
+    @after_this_request
+    def _cleanup(response):
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        return response
+
+    return send_file(snapshot, as_attachment=True, download_name='motostock.db',
+                     mimetype='application/octet-stream')
 
 
 @backup_bp.route('/api/backup/sync', methods=['POST'])

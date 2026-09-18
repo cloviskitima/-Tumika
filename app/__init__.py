@@ -160,4 +160,12 @@ def create_app():
         from app.sync import sync_if_needed
         sync_if_needed()
 
+    # Synchronisation AUTOMATIQUE locale <-> site en ligne (ordinateur uniquement) :
+    # envoie la base au site après chaque opération de modification, récupère celle
+    # du site toutes les minutes, et fusionne dans les deux sens (rien n'est écrasé).
+    from app.autosync import after_request_hook, start_autosync
+    if not os.environ.get('RENDER_EXTERNAL_URL'):
+        app.after_request(after_request_hook)
+    start_autosync(app)
+
     return app

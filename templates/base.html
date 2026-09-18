@@ -119,6 +119,36 @@
             text-align: center;
         }
 
+        .sync-btn {
+            width: 100%;
+            background: none;
+            border: none;
+            font: inherit;
+            text-align: left;
+        }
+
+        .sync-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .side-sync-status {
+            margin: 8px 24px 0;
+            font-size: 0.72rem;
+            line-height: 1.35;
+            opacity: 0.7;
+        }
+
+        .side-sync-status.ok {
+            color: #86efac;
+            opacity: 1;
+        }
+
+        .side-sync-status.err {
+            color: #fca5a5;
+            opacity: 1;
+        }
+
         .sidebar-footer {
             padding: 20px 24px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -884,6 +914,21 @@
                     {% endif %}
                 </div>
                 {% endif %}
+
+                {% if current_user and current_user.has_perm('settings', 'view') %}
+                <div class="nav-section">
+                    <div class="nav-section-title">Synchronisation</div>
+                    <button type="button" class="nav-item sync-btn" onclick="sideSync('push')" {% if not current_user.has_perm('settings', 'update') %}disabled{% endif %}>
+                        <i class="bi bi-cloud-arrow-up"></i>
+                        <span>Envoyer au site</span>
+                    </button>
+                    <button type="button" class="nav-item sync-btn" onclick="sideSync('pull')" {% if not current_user.has_perm('settings', 'update') %}disabled{% endif %}>
+                        <i class="bi bi-cloud-arrow-down"></i>
+                        <span>Récupérer du site</span>
+                    </button>
+                    <div id="sideSyncStatus" class="side-sync-status">Automatique : toutes les minutes</div>
+                </div>
+                {% endif %}
             </nav>
             
             <div class="sidebar-footer">
@@ -1116,6 +1161,30 @@
                 setTimeout(() => toast.remove(), 300);
             }, duration);
         }
+
+        // ===== Synchronisation locale <-> site en ligne (boutons latéraux) =====
+        window.sideSync = async function (direction) {
+            const statusEl = document.getElementById('sideSyncStatus');
+            const setStatus = (msg, cls) => {
+                if (statusEl) { statusEl.textContent = msg; statusEl.className = 'side-sync-status ' + (cls || ''); }
+            };
+            const endpoint = direction === 'pull' ? '/api/backup/pull-site' : '/api/backup/push-site';
+            setStatus(direction === 'pull' ? 'Récupération en cours…' : 'Envoi au site en cours…', '');
+            try {
+                const response = await fetch(endpoint, { method: 'POST' });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    setStatus(direction === 'pull' ? 'Récupéré et fusionné ✓' : 'Envoyé au site ✓', 'ok');
+                    if (typeof showToast === 'function') showToast(data.message || 'Synchronisation réussie', 'success');
+                } else {
+                    setStatus('Échec — voir message', 'err');
+                    if (typeof showToast === 'function') showToast((data && data.message) || 'Synchronisation impossible', 'danger');
+                }
+            } catch (error) {
+                setStatus('Site injoignable', 'err');
+                if (typeof showToast === 'function') showToast('Erreur réseau lors de la synchronisation', 'danger');
+            }
+        };
 
         // ===== Helpers caméra partagés (Ventes & Stock) =====
         // Liste les webcams réelles de la machine (enumerateDevices)

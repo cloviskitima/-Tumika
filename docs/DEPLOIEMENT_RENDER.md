@@ -112,6 +112,28 @@ ordinateur** : GitHub sert de pont entre le travail local et le site en ligne.
 > Le bouton **Synchroniser maintenant** (Réglages → Sauvegarde GitHub) permet
 > de forcer une mise à jour immédiate sans attendre les 30 secondes.
 
+### Synchronisation automatique locale <-> site en ligne (ordinateur uniquement)
+
+En plus du pont GitHub, l'ordinateur **synchronise sa base directement avec le
+site en ligne**, sans rien écraser, dans les deux sens :
+
+- **Après chaque opération** (vente, stock, caisse, …) : la base est envoyée au
+  site qui la fusionne (~2 s après l'action).
+- **Toutes les minutes** : l'ordinateur envoie ses changements puis récupère la
+  base du site et la fusionne localement — les données saisies en ligne reviennent
+  sur l'ordinateur.
+- **Manuellement** : boutons « Envoyer au site » / « Récupérer du site » dans le
+  menu latéral et dans *Réglages → Site en ligne*.
+
+Activation (une seule fois, sur l'ordinateur) : *Réglages → Site en ligne*,
+renseignez l'**adresse du site**, l'**identifiant administrateur** et le **mot de
+passe** puis enregistrez. Le mot de passe reste dans le fichier local protégé
+(`instance/github_backup.json`, jamais publié). Il faut **paramétrer sur Render
+le même mot de passe admin** (ou au moins un compte admin) pour que la
+connexion du PC soit acceptée — voir *Réglages → Sécurité* sur le site.
+Rien ne se déclenche tant que le mot de passe n'est pas renseigné, et rien ne
+tourne sur le site hébergé.
+
 ### La base en ligne est mise à jour (pas écrasée)
 
 Le site **ne remplace pas sa base par celle de GitHub** : il fusionne.

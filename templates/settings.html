@@ -371,6 +371,13 @@
                             (<code>https://tumika.onrender.com</code>), qui <strong>fusionne les données sans rien écraser</strong>.
                             Aucune configuration (jeton) n'est nécessaire sur Render. Le mot de passe saisi sert à se
                             connecter au site (compte administrateur) et reste dans le fichier local protégé.
+                            <br><br>
+                            <strong>Synchronisation automatique (recommandée) :</strong> une fois le mot de passe
+                            enregistré, la base est envoyée au site <strong>après chaque opération</strong> (vente,
+                            stock, caisse, …) et <strong>récupérée chaque minute</strong> — les données saisies en
+                            ligne reviennent aussi sur l'ordinateur, et rien n'est écrasé dans un sens ni dans l'autre.
+                            Les boutons ci-dessous permettent de le faire manuellement à tout moment (présents aussi
+                            dans le menu latéral).
                         </p>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px;">
                             <div>
@@ -385,10 +392,14 @@
                                 <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--gray-700);">Mot de passe administrateur</label>
                                 <input type="password" id="sitePassword" class="form-control" placeholder="••••••" autocomplete="off">
                             </div>
-                            <div style="display: flex; align-items: flex-end;">
+                            <div style="display: flex; flex-direction: column; gap: 10px; justify-content: flex-end;">
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--gray-700); cursor: pointer;">
+                                    <input type="checkbox" id="autoWeb" checked>
+                                    Synchronisation automatique (à chaque opération + chaque minute)
+                                </label>
                                 <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--gray-700); cursor: pointer;">
                                     <input type="checkbox" id="autoSite" checked>
-                                    Mettre le site à jour automatiquement à chaque sauvegarde GitHub
+                                    Envoyer aussi au site à chaque sauvegarde GitHub
                                 </label>
                             </div>
                         </div>
@@ -397,7 +408,12 @@
                                 <img id="siteSpinner" src="{{ url_for('static', filename='img/spinner.svg') }}" alt="Chargement" style="width: 20px; height: 20px; display: none; margin-right: 8px; vertical-align: middle;">
                                 <span id="sitePushLabel">Envoyer la base au site en ligne</span>
                             </button>
+                            <button class="btn btn-outline-primary" id="sitePullBtn" onclick="pullSiteNow()" style="min-width: 220px;">
+                                <img id="sitePullSpinner" src="{{ url_for('static', filename='img/spinner.svg') }}" alt="Chargement" style="width: 20px; height: 20px; display: none; margin-right: 8px; vertical-align: middle;">
+                                <span id="sitePullLabel">Récupérer du site en ligne</span>
+                            </button>
                         </div>
+                        <div id="sitePullStatus"></div>
                         <div id="siteStatus"></div>
                     </div>
                 </div>
@@ -850,6 +866,60 @@ async function syncDatabaseNow() {
     }
 }
 
+function renderSitePullStatus(d) {
+    const box = document.getElementById('sitePullStatus');
+    if (!box) return;
+    const label = document.getElementById('sitePullLabel');
+    let html = '';
+
+    if (d.last_site_pull_status === 'error') {
+        label.textContent = 'Réessayer la récupération depuis le site';
+        html += '<div class="alert alert-danger" role="alert" style="font-size: 0.9rem;">' +
+                    '<i class="bi bi-x-circle"></i> <strong>Échec de la récupération.</strong><br>' +
+                    '<code>' + escapeHtml(d.last_site_pull_error || d.error || 'Erreur inconnue') + '</code>' +
+                '</div>';
+    } else {
+        label.textContent = 'Récupérer du site en ligne';
+        if (d.last_site_pull_status === 'ok' && d.last_site_pull_at) {
+            html += '<div style="background: var(--gray-100); padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 0.9rem;">' +
+                        '<i class="bi bi-cloud-arrow-down"></i> Dernière récupération : <strong>' + escapeHtml(formatDateFr(d.last_site_pull_at)) + '</strong>' +
+                    '</div>';
+        }
+    }
+    box.innerHTML = html;
+}
+
+async function pullSiteNow() {
+    const btn = document.getElementById('sitePullBtn');
+    const spinner = document.getElementById('sitePullSpinner');
+    const label = document.getElementById('sitePullLabel');
+    if (btn.disabled) return;
+
+    btn.disabled = true;
+    spinner.style.display = 'inline-block';
+    label.textContent = 'Récupération en cours…';
+
+    try {
+        const response = await fetch('/api/backup/pull-site', { method: 'POST' });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            renderSitePullStatus(data);
+            if (typeof showToast === 'function') showToast(data.message || 'Récupération réussie', 'success');
+        } else {
+            renderSitePullStatus(data);
+            if (typeof showToast === 'function') showToast('La récupération depuis le site a échoué', 'danger');
+        }
+    } catch (error) {
+        console.error('Erreur lors de la récupération:', error);
+        label.textContent = 'Réessayer la récupération depuis le site';
+        renderSitePullStatus({ last_site_pull_status: 'error', last_site_pull_error: 'Erreur réseau ou serveur (site en ligne injoignable).' });
+        if (typeof showToast === 'function') showToast('Erreur réseau lors de la récupération', 'danger');
+    } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+    }
+}
+
 function renderSiteStatus(d) {
     const box = document.getElementById('siteStatus');
     if (!box) return;
@@ -936,9 +1006,11 @@ async function loadGithubConfig() {
         document.getElementById('siteUsername').value = data.site_username || 'admin';
         document.getElementById('sitePassword').value = '';
         document.getElementById('autoSite').checked = (data.auto_site === undefined) ? true : !!data.auto_site;
+        document.getElementById('autoWeb').checked = (data.auto_web === undefined) ? true : !!data.auto_web;
         if (data.has_site_password) {
             document.getElementById('sitePassword').placeholder = 'Mot de passe enregistré (laisser vide pour conserver)';
         }
+        renderSitePullStatus(data);
         renderSiteStatus(data);
         renderGhStatus(data);
         loadSyncStatus();
@@ -957,7 +1029,8 @@ async function saveGithubConfig() {
         site_url: document.getElementById('siteUrl').value.trim(),
         site_username: document.getElementById('siteUsername').value.trim(),
         site_password: document.getElementById('sitePassword').value,
-        auto_site: document.getElementById('autoSite').checked
+        auto_site: document.getElementById('autoSite').checked,
+        auto_web: document.getElementById('autoWeb').checked
     };
 
     if (!payload.owner || !payload.repo) {
