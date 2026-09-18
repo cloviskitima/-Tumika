@@ -1,10 +1,16 @@
 """
 Routes principales de l'application
 """
-from flask import Blueprint, render_template, session
+from flask import Blueprint, jsonify, render_template, session
 from app.routes.auth import login_required, permission_required
 
 main_bp = Blueprint('main', __name__)
+
+
+@main_bp.route('/health')
+def health():
+    """Santé de l'application : utilisé par les hébergeurs (Render, UptimeRobot, cron…)"""
+    return jsonify({'status': 'ok', 'service': 'MotoStockIA #TUMIKA'})
 
 
 @main_bp.route('/dashboard')

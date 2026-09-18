@@ -1,0 +1,44 @@
+# =====================================================================
+#  MotoStockIA #TUMIKA — Blueprint Render (déploiement tout-en-un)
+#
+#  Utilisation :
+#    1. Poussez ce dépôt sur GitHub.
+#    2. Sur Render : "New" -> "Blueprint" -> sélectionnez le dépôt.
+#    3. Render détecte ce fichier et crée automatiquement le service web.
+#
+#  L'application s'auto-maintient éveillée (KEEP_ALIVE_URL =
+#  RENDER_EXTERNAL_URL renseignée automatiquement par Render).
+# =====================================================================
+services:
+  - type: web
+    name: tumika
+    runtime: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # Clé de session : générée automatiquement (jamais à publier)
+      - key: SECRET_KEY
+        generateValue: true
+      # Anti-veille : l'instance s'auto-interroge pour ne plus dormir
+      - key: ENABLE_KEEPALIVE
+        value: "1"
+      # Intervalle entre deux auto-interrogations (9 minutes < 15 min Render)
+      - key: KEEP_ALIVE_INTERVAL
+        value: "540"
+      # Base de données : laissée en SQLite par défaut (local).
+      # Pour une persistance réelle sur Render (PostgreSQL gratuit),
+      # créez une base puis décommentez ci-dessous :
+      # - key: DATABASE_URL
+      #   fromDatabase:
+      #     name: tumika-db
+      #     property: connectionString
+
+# Base PostgreSQL optionnelle (persistance des données sur Render).
+# ATTENTION : l'application est conçue et testée sur SQLite ; un passage
+# à PostgreSQL nécessite d'abord de vérifier/export les données.
+# databases:
+#   - name: tumika-db
+#     plan: free
+#     region: oregon

@@ -43,7 +43,8 @@ def create_app():
     
     # Configuration
     app.config['SECRET_KEY'] = _get_secret_key(basedir)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///motostock.db'
+    # Base de données : DATABASE_URL (ex. PostgreSQL sur Render) sinon SQLite locale
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///motostock.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # Durcissement des cookies de session
@@ -107,6 +108,23 @@ def create_app():
                 db.session.commit()
         except Exception:
             pass
+        # Utilisateur admin par défaut (hébergement : base neuve au 1er démarrage)
+        try:
+            from app.models.user import User
+            if not User.query.filter_by(username='admin').first():
+                admin = User(
+                    username='admin',
+                    email='admin@motostock.local',
+                    first_name='Administrateur',
+                    last_name='Principal',
+                    role='admin',
+                    is_active=True
+                )
+                admin.set_password('admin123')
+                db.session.add(admin)
+                db.session.commit()
+        except Exception:
+            pass
         from app.utils.comptabilite import seed_plan_comptable
         try:
             seed_plan_comptable()
@@ -119,4 +137,8 @@ def create_app():
         except Exception:
             pass
     
+    # Anti-veille (hébergeurs gratuits : Render…) : maintient l'instance éveillée
+    from app.keepalive import start_keepalive
+    start_keepalive(app)
+
     return app
