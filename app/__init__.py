@@ -141,4 +141,21 @@ def create_app():
     from app.keepalive import start_keepalive
     start_keepalive(app)
 
+    # Synchronisation des données (site en ligne uniquement) : GitHub -> base locale.
+    # GitLab/Render télécharge et affiche la base poussée depuis l'ordinateur ;
+    # jamais activé en local (GITHUB_SYNC_ENABLED=1 chez l'hébergeur uniquement).
+    if os.environ.get('GITHUB_SYNC_ENABLED') == '1':
+        from app.sync import force_sync
+        try:
+            force_sync(app)
+        except Exception:
+            pass
+
+    # À chaque requête (rafraîchissement de page, /health…), vérifie GitHub de
+    # façon limitée et récupère la base si une nouvelle sauvegarde existe.
+    @app.before_request
+    def _synchroniser_donnees():
+        from app.sync import sync_if_needed
+        sync_if_needed()
+
     return app

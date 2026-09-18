@@ -75,6 +75,44 @@ elle se ping elle-même et ne se met jamais en veille.
 
 ---
 
+## 5 bis. Synchronisation des données (GitHub → site en ligne)
+
+Le site hébergé **réutilise automatiquement la base poussée depuis votre
+ordinateur** : GitHub sert de pont entre le travail local et le site en ligne.
+
+**Le flux, tel qu'attendu :**
+
+1. Sur l'ordinateur : **Réglages → Sauvegarde GitHub → Pousser la base de
+   données vers GitHub**. Une copie de `motostock.db` est envoyée dans le dépôt
+   `-Tumika-backup` (`backups/motostock.db`).
+2. Sur le site en ligne : à chaque requête (rafraîchissement de page, ping
+   anti-veille `/health`), l'application vérifie GitHub — au plus 1 appel toutes
+   les `GITHUB_SYNC_INTERVAL` secondes (30 s par défaut).
+3. Si le fichier `backups/motostock.db` a changé, le site **télécharge, valide
+   et remplace sa base** ; il affiche alors **toutes les vraies données locales**,
+   y compris les nouvelles. Une sauvegarde = base en ligne mise à jour.
+
+**Configuration (déjà dans `render.yaml`) :**
+
+| Variable | Valeur attendue |
+|---|---|
+| `GITHUB_SYNC_ENABLED` | `1` (active sur le site, jamais en local) |
+| `GITHUB_SYNC_TOKEN` | token GitHub scpope `repo` — ⚠️ à renseigner **une fois** sur le dashboard Render (Environnement) |
+| `GITHUB_SYNC_OWNER` | `cloviskitima` |
+| `GITHUB_SYNC_REPO` | `-Tumika-backup` |
+| `GITHUB_SYNC_BRANCH` | `main` |
+| `GITHUB_SYNC_PATH` | `backups/motostock.db` |
+| `GITHUB_SYNC_INTERVAL` | `30` (secondes entre deux vérifications) |
+
+> ⚠️ **Important** : `GITHUB_SYNC_ENABLED` est à mettre **uniquement chez
+> Render**. Sur l'ordinateur local, gardez-la absente/à `0`, sinon la base
+> locale serait écrasée par le contenu de GitHub.
+
+> Le bouton **Synchroniser maintenant** (Réglages → Sauvegarde GitHub) permet
+> de forcer une mise à jour immédiate sans attendre les 30 secondes.
+
+---
+
 ## 6. Variables d'environnement gérées
 
 | Variable | Défaut | Rôle |
@@ -83,6 +121,10 @@ elle se ping elle-même et ne se met jamais en veille.
 | `ENABLE_KEEPALIVE` | `1` | active l'anti-veille |
 | `KEEP_ALIVE_INTERVAL` | `540` | intervalle (s) entre deux pings |
 | `KEEP_ALIVE_URL` | `RENDER_EXTERNAL_URL` | URL publique interrogée |
+| `GITHUB_SYNC_ENABLED` | — | `1` = active la récupération GitHub (site en ligne) |
+| `GITHUB_SYNC_TOKEN` | — | token GitHub (scope `repo`), saisi sur le dashboard |
+| `GITHUB_SYNC_OWNER` / `REPO` / `BRANCH` / `PATH` | config `render.yaml` | localisation du fichier de sauvegarde |
+| `GITHUB_SYNC_INTERVAL` | `30` | secondes entre deux vérifications GitHub |
 | `PORT` | 8000 | port d'écoute (fourni par Render) |
 | `DATABASE_URL` | — | PostgreSQL optionnel |
 

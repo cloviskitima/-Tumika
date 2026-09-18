@@ -27,6 +27,26 @@ services:
       # Intervalle entre deux auto-interrogations (9 minutes < 15 min Render)
       - key: KEEP_ALIVE_INTERVAL
         value: "540"
+      # Synchronisation des données : le site récupère automatiquement la base
+      # poussée sur GitHub (travail local) et l'affiche à chaque sauvegarde.
+      - key: GITHUB_SYNC_ENABLED
+        value: "1"
+      # Token GitHub (scope repo). À renseigner UNE FOIS sur le tableau de bord
+      # Render (service tumika → Environment) : le même que la sauvegarde locale.
+      - key: GITHUB_SYNC_TOKEN
+        sync: false
+        value: ""
+      - key: GITHUB_SYNC_OWNER
+        value: "cloviskitima"
+      - key: GITHUB_SYNC_REPO
+        value: "-Tumika-backup"
+      - key: GITHUB_SYNC_BRANCH
+        value: "main"
+      - key: GITHUB_SYNC_PATH
+        value: "backups/motostock.db"
+      # Vérification GitHub au plus toutes les 30 secondes
+      - key: GITHUB_SYNC_INTERVAL
+        value: "30"
       # Base de données : laissée en SQLite par défaut (local).
       # Pour une persistance réelle sur Render (PostgreSQL gratuit),
       # créez une base puis décommentez ci-dessous :

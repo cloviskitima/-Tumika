@@ -182,8 +182,13 @@ def _push_to_github(cfg):
 @backup_bp.route('/api/backup/status', methods=['GET'])
 @permission_required('settings', 'update')
 def backup_status():
-    """État de la sauvegarde (sans jamais renvoyer le token)."""
-    return jsonify({'success': True, **_masked_status(_load_config())})
+    """État de la sauvegarde (sans jamais renvoyer le token) et de la synchronisation."""
+    from app.sync import sync_status
+    return jsonify({
+        'success': True,
+        **_masked_status(_load_config()),
+        'sync': sync_status(),
+    })
 
 
 @backup_bp.route('/api/backup/config', methods=['POST'])
@@ -260,3 +265,29 @@ def backup_push():
         'last_backup_at': now,
         'last_status': 'ok',
     })
+
+
+@backup_bp.route('/api/backup/sync', methods=['POST'])
+@permission_required('settings', 'update')
+def backup_sync_now():
+    """Déclenche immédiatement la synchronisation depuis GitHub (site en ligne).
+
+    Récupère la base poussée depuis l'ordinateur et remplace la base locale
+    du site afin d'afficher les données à jour.
+    """
+    from app.sync import force_sync, sync_status
+    try:
+        result = force_sync()
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e), 'sync': sync_status()}), 500
+
+    applied = bool(result.get('applied'))
+    message = ('Base de données synchronisée depuis GitHub avec succès.' if applied
+               else {'a_jour': 'Base déjà à jour (aucun changement depuis la dernière synchronisation).',
+                     'sync_desactive': 'Synchronisation désactivée sur cette installation.',
+                     'github_injoignable': 'GitHub injoignable pour le moment. Réessayez plus tard.',
+                     'telechargement_impossible': 'Impossible de télécharger la base depuis GitHub.',
+                     'fichier_invalide': 'Le fichier téléchargé depuis GitHub est invalide.',
+                     'base_non_sqlite': 'Synchronisation non supportée avec cette base de données.'}.get(
+                         result.get('reason'), 'Rien à synchroniser.'))
+    return jsonify({'success': applied, 'message': message, **result, 'sync': sync_status()})

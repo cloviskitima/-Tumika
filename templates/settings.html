@@ -336,6 +336,28 @@
                     <hr style="margin: 0 0 24px; border: none; border-top: 1px solid var(--gray-200);">
                     
                     <div id="ghStatus"></div>
+                    
+                    <hr style="margin: 0 0 24px; border: none; border-top: 1px solid var(--gray-200);">
+                    
+                    <div style="margin-bottom: 24px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <i class="bi bi-arrow-repeat" style="font-size: 1.4rem; color: var(--primary);"></i>
+                            <h3 style="margin: 0; font-size: 1.05rem;">Synchronisation automatique (site en ligne)</h3>
+                        </div>
+                        <p style="font-size: 0.88rem; color: var(--gray-500); margin-top: 8px; margin-bottom: 12px;">
+                            Sur le site hébergé (Render), l'application récupère automatiquement la base de données
+                            poussée sur GitHub et l'affiche : vos données locales sont actualisées en ligne à
+                            chaque sauvegarde, sans aucune action manuelle (vérification à chaque requête,
+                            limitée à un appel GitHub toutes les {{ sync_interval|default(30) }} secondes).
+                        </p>
+                        <div id="syncStatus" class="alert alert-light" role="alert" style="font-size: 0.9rem;">
+                            <i class="bi bi-hourglass-split"></i> Chargement…
+                        </div>
+                        <button class="btn btn-outline-primary" type="button" onclick="syncDatabaseNow()" id="syncNowBtn">
+                            <i class="bi bi-cloud-download"></i>
+                            <span>Synchroniser maintenant</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -714,6 +736,77 @@ function renderGhStatus(d) {
     box.innerHTML = html;
 }
 
+function renderSyncStatus(sync) {
+    const box = document.getElementById('syncStatus');
+    if (!box) return;
+    if (!sync) {
+        box.className = 'alert alert-warning';
+        box.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Statut de synchronisation indisponible.';
+        return;
+    }
+
+    if (!sync.sync_enabled) {
+        box.className = 'alert alert-secondary';
+        box.innerHTML = '<i class="bi bi-slash-circle"></i> <strong>Synchronisation désactivée sur cette installation.</strong> ' +
+            'Elle est active uniquement sur le site en ligne (Render) via la variable <code>GITHUB_SYNC_ENABLED=1</code>.';
+        document.getElementById('syncNowBtn').disabled = true;
+        return;
+    }
+
+    let html = '';
+    if (sync.updated_at) {
+        html += '<div class="d-flex align-items-center gap-2 flex-wrap">' +
+                    '<i class="bi bi-check-circle" style="color: var(--success);"></i>' +
+                    '<span><strong>Synchronisé :</strong> ' + escapeHtml(formatDateFr(sync.updated_at)) + '</span>' +
+                    (sync.commit ? '<code style="font-size: 0.8rem;">' + escapeHtml(String(sync.commit).slice(0, 12)) + '</code>' : '') +
+                '</div>';
+    } else {
+        html += '<div class="d-flex align-items-center gap-2 flex-wrap">' +
+                    '<i class="bi bi-arrow-repeat"></i> Aucune synchronisation effectuée pour le moment' +
+                '</div>';
+    }
+    if (sync.repo) {
+        html += '<div class="mt-1" style="color: var(--gray-500); font-size: 0.85rem;">' +
+                    'Réserve : <code>' + escapeHtml(sync.owner) + '/' + escapeHtml(sync.repo) + '</code> — ' +
+                    escapeHtml(sync.path) + ' (vérification toutes les ' + (sync.interval || 30) + ' s)</div>';
+    }
+    if (sync.last_error) {
+        html += '<div class="mt-1" style="color: var(--danger); font-size: 0.85rem;">' +
+                    '<i class="bi bi-exclamation-circle"></i> Erreur : ' + escapeHtml(sync.last_error) + '</div>';
+    }
+
+    box.className = 'alert alert-light';
+    box.innerHTML = html;
+}
+
+function loadSyncStatus() {
+    fetch('/api/backup/status')
+        .then(r => r.json())
+        .then(data => renderSyncStatus(data.sync))
+        .catch(error => console.error('Erreur lors du chargement du statut de synchronisation:', error));
+}
+
+async function syncDatabaseNow() {
+    const btn = document.getElementById('syncNowBtn');
+    if (btn.disabled) return;
+    btn.disabled = true;
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Synchronisation en cours…';
+
+    try {
+        const response = await fetch('/api/backup/sync', { method: 'POST' });
+        const data = await response.json();
+        if (typeof showToast === 'function') showToast(data.message || 'Synchronisation terminée', data.success ? 'success' : 'warning');
+        renderSyncStatus(data.sync);
+    } catch (error) {
+        console.error('Erreur lors de la synchronisation:', error);
+        if (typeof showToast === 'function') showToast('Erreur réseau lors de la synchronisation', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = original;
+    }
+}
+
 async function loadGithubConfig() {
     try {
         const response = await fetch('/api/backup/status');
@@ -731,6 +824,7 @@ async function loadGithubConfig() {
             ? 'Token déjà enregistré : ' + (data.masked_token || '••••••')
             : 'Aucun token enregistré pour le moment.';
         renderGhStatus(data);
+        loadSyncStatus();
     } catch (error) {
         console.error('Erreur lors du chargement de la configuration GitHub:', error);
     }
