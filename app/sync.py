@@ -187,6 +187,118 @@ def _live_db_path(app):
     return os.path.join(app.instance_path, rel)
 
 
+def _copy_sqlite(src, dst):
+    """Copie cohérente d'un fichier SQLite (API de sauvegarde SQLite)."""
+    s = sqlite3.connect(src)
+    d = sqlite3.connect(dst)
+    try:
+        with d:
+            s.backup(d)
+    finally:
+        d.close()
+        s.close()
+
+
+def _table_list(conn):
+    return [r[0] for r in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")]
+
+
+def _table_info(conn, table):
+    """Colonnes d'une table : (cid, nom, type, notnull, defaut, pk)."""
+    return [tuple(r) for r in conn.execute('PRAGMA table_info("{}")'.format(table))]
+
+
+def _apply_delta(delta_path, target_path):
+    """Met à jour la MÊME base (target) à partir de la sauvegarde (delta).
+
+    Au lieu d'écraser la base du site, chaque ligne de GitHub est insérée ou
+    mise à jour par clé primaire dans la base existante : les données ajoutées
+    directement en ligne sont conservées, les nouvelles données locales arrivent
+    de GitHub, et le schéma est complété (nouvelles tables / colonnes).
+    """
+    tgt = sqlite3.connect(target_path, timeout=15)
+    delta = sqlite3.connect(delta_path, timeout=15)
+    try:
+        tgt.execute('BEGIN')
+        tgt_tables = set(_table_list(tgt))
+        delta_tables = set(_table_list(delta))
+
+        for table in sorted(delta_tables):
+            create_sql = delta.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (table,)).fetchone()
+            if table not in tgt_tables:
+                if not create_sql or not create_sql[0]:
+                    continue
+                tgt.execute(create_sql[0])
+                tgt_tables.add(table)
+
+            dinfo = _table_info(delta, table)
+            tinfo = _table_info(tgt, table)
+            tgt_cols = {c[1]: c for c in tinfo}
+            # Colonnes présentes dans la sauvegarde mais absentes de la base
+            for c in dinfo:
+                name = c[1]
+                if name not in tgt_cols and c[2].upper() != 'INTEGER PRIMARY KEY':
+                    tgt.execute('ALTER TABLE "{}" ADD COLUMN "{}" {}'.format(table, name, c[2]))
+
+            cols = [c[1] for c in dinfo]
+            col_idx = {name: i for i, name in enumerate(cols)}
+            pks = [c[1] for c in dinfo if c[5] > 0]
+
+            col_list = ', '.join('"{}"'.format(c) for c in cols)
+            values_clause = ', '.join('?' * len(cols))
+
+            if pks:
+                pk_where = ' AND '.join('"{}"=?'.format(c) for c in pks)
+                sel = 'SELECT 1 FROM "{}" WHERE {}'.format(table, pk_where)
+                upd = 'UPDATE "{}" SET {} WHERE {}'.format(
+                    table,
+                    ', '.join('"{}"=?'.format(c) for c in cols if c not in pks),
+                    pk_where)
+            else:
+                # Pas de clé primaire : la ligne entière sert de clé (pas de doublons)
+                key_cols = cols
+                key_where = ' AND '.join('"{}"=?'.format(c) for c in key_cols)
+                sel = 'SELECT 1 FROM "{}" WHERE {}'.format(table, key_where)
+                upd = None
+            ins = 'INSERT INTO "{}" ({}) VALUES ({})'.format(table, col_list, values_clause)
+
+            for row in delta.execute('SELECT * FROM "{}"'.format(table)):
+                if pks:
+                    key = tuple(row[col_idx[c]] for c in pks)
+                    exists = tgt.execute(sel, key).fetchone()
+                else:
+                    key = tuple(row[col_idx[c]] for c in key_cols)
+                    exists = tgt.execute(sel, key).fetchone()
+                if exists:
+                    if upd:
+                        vals = [row[col_idx[c]] for c in cols if c not in pks] + list(key)
+                        tgt.execute(upd, vals)
+                else:
+                    tgt.execute(ins, list(row))
+
+            # Compteurs AUTOINCREMENT : aligner pour éviter toute collision de clés
+            row = tgt.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name=?",
+                              (table,)).fetchone()
+            if row and row[0] and 'AUTOINCREMENT' in (row[0] or '').upper():
+                mx = tgt.execute('SELECT COALESCE(MAX(rowid), 0) FROM "{}"'.format(table)).fetchone()[0]
+                tgt.execute('UPDATE sqlite_sequence SET seq=? WHERE name=?', (mx, table))
+
+        if tgt.execute('PRAGMA integrity_check').fetchone()[0] != 'ok':
+            raise RuntimeError('La base fusionnée est incohérente (integrite KO).')
+        tgt.execute('COMMIT')
+    except Exception:
+        try:
+            tgt.execute('ROLLBACK')
+        except Exception:
+            pass
+        raise
+    finally:
+        tgt.close()
+        delta.close()
+
+
 def sync_status(app=None):
     """État de la synchronisation (affiché dans les paramètres)."""
     cfg = get_config(app)
@@ -202,6 +314,8 @@ def sync_status(app=None):
         'last_check_at': state.get('last_check_at'),
         'last_error': state.get('last_error'),
         'interval': interval_seconds(),
+        'webhook': bool(os.environ.get('GITHUB_SYNC_WEBHOOK_SECRET')),
+        'mode': 'fusion',
     }
 
 
@@ -248,27 +362,51 @@ def force_sync(app=None):
             _save_state(instance, state)
             return {'applied': False, 'reason': 'base_non_sqlite'}
 
-        # Fermer les connexions SQLAlchemy (libère le fichier, requis notamment
-        # sur Windows), puis remplacement atomique : au prochain accès, le
-        # moteur rouvrira le nouveau fichier.
-        from app import db
+        # Fusion : la base existante est mise à jour (pas écrasée). On travaille
+        # sur une copie, validée puis échangée atomiquement. Les données saisies
+        # directement en ligne sont conservées ; les données locales arrivent
+        # depuis GitHub, ligne par ligne (insertions / mises à jour par clé).
+        merged_fd, merged_path = tempfile.mkstemp(prefix='tumika_merge_', suffix='.db')
+        os.close(merged_fd)
         try:
-            with app.app_context():
-                db.engine.dispose()
-        except Exception:
-            pass
-        if os.path.exists(live):
+            if os.path.exists(live):
+                _copy_sqlite(live, merged_path)
+                _apply_delta(tmp_path, merged_path)
+            else:
+                os.replace(tmp_path, merged_path)
+
+            if not _validate(merged_path):
+                state['last_error'] = 'fichier_invalide'
+                _save_state(instance, state)
+                return {'applied': False, 'reason': 'fichier_invalide'}
+
+            # Fermer les connexions SQLAlchemy (libère le fichier, requis notamment
+            # sur Windows), puis remplacement atomique : au prochain accès, le
+            # moteur rouvrira le fichier fusionné.
+            from app import db
             try:
-                os.replace(live, live + '.pre-sync')
-            except OSError:
+                with app.app_context():
+                    db.engine.dispose()
+            except Exception:
                 pass
-        os.replace(tmp_path, live)
+            if os.path.exists(live):
+                try:
+                    os.replace(live, live + '.pre-sync')
+                except OSError:
+                    pass
+            os.replace(merged_path, live)
+        finally:
+            if os.path.exists(merged_path):
+                try:
+                    os.remove(merged_path)
+                except OSError:
+                    pass
 
         state['sha'] = sha
         state['updated_at'] = now
         state.pop('last_error', None)
         _save_state(instance, state)
-        logger.info('Synchronisation GitHub -> base locale effectuée (commit %s…)', sha[:12])
+        logger.info('Synchronisation GitHub -> base locale : mise à jour fusionnée (commit %s…)', sha[:12])
         return {'applied': True, 'commit': sha, 'updated_at': now}
     finally:
         if os.path.exists(tmp_path):

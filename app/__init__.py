@@ -81,12 +81,14 @@ def create_app():
     from app.routes.main import main_bp
     from app.routes.api import api_bp
     from app.routes.backup import backup_bp
+    from app.webhook import webhook_bp
     
     # Enregistrement des blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(backup_bp)
+    app.register_blueprint(webhook_bp)
 
     # Injection de l'utilisateur courant dans tous les templates
     @app.context_processor

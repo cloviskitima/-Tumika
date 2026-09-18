@@ -113,6 +113,30 @@ ordinateur** : GitHub sert de pont entre le travail local et le site en ligne.
 > Le bouton **Synchroniser maintenant** (Réglages → Sauvegarde GitHub) permet
 > de forcer une mise à jour immédiate sans attendre les 30 secondes.
 
+### La base en ligne est mise à jour (pas écrasée)
+
+Le site **ne remplace pas sa base par celle de GitHub** : il fusionne.
+Chaque ligne de la sauvegarde est insérée ou mise à jour par clé primaire
+dans la base existante, et de nouvelles tables/colonnes sont ajoutées au besoin.
+Résultat : les données saisies directement en ligne sont conservées, et les
+nouvelles données locales arrivent de GitHub sans rien perdre.
+
+### Actualisation immédiate par webhook (optionnel, recommandé)
+
+En plus de la vérification automatique, GitHub peut **prévenir Render
+instantanément** à chaque sauvegarde poussée :
+
+1. Sur Render (dashboard → service `tumika` → *Environment*) : renseignez
+   `GITHUB_SYNC_WEBHOOK_SECRET` (une phrase, ex. `ma-clé-séchante-123`). Render redéploie.
+2. Sur GitHub, dépôt `-Tumika-backup` : **Settings → Webhooks → Add webhook** :
+   - *Payload URL* : `https://<votre-url>/webhook/github-sync`
+   - *Content type* : `application/json`
+   - *Secret* : la même valeur que `GITHUB_SYNC_WEBHOOK_SECRET`
+   - *Which events* : « Just the push event »
+   - *Add webhook* (GitHub envoie alors un « ping » de test).
+3. Chaque « Pousser la base de données vers GitHub » déclenche désormais
+   l'actualisation de Render **en quelques secondes**.
+
 ---
 
 ## 6. Variables d'environnement gérées

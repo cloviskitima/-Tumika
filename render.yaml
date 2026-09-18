@@ -47,6 +47,12 @@ services:
       # Vérification GitHub au plus toutes les 30 secondes
       - key: GITHUB_SYNC_INTERVAL
         value: "30"
+      # Webhook d'actualisation IMMÉDIATE : GitHub prévient Render à chaque
+      # sauvegarde poussée. Renseignez une valeur (ex : une phrase) sur le
+      # dashboard Render puis créez le webhook côté GitHub (voir docs).
+      - key: GITHUB_SYNC_WEBHOOK_SECRET
+        sync: false
+        value: ""
       # Base de données : laissée en SQLite par défaut (local).
       # Pour une persistance réelle sur Render (PostgreSQL gratuit),
       # créez une base puis décommentez ci-dessous :
