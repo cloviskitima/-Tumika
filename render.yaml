@@ -31,8 +31,9 @@ services:
       # poussée sur GitHub (travail local) et l'affiche à chaque sauvegarde.
       - key: GITHUB_SYNC_ENABLED
         value: "1"
-      # Token GitHub (scope repo). À renseigner UNE FOIS sur le tableau de bord
-      # Render (service tumika → Environment) : le même que la sauvegarde locale.
+      # Token GitHub (scope repo). FACULTATIF si le dépôt de sauvegarde est
+      # public (défaut). Renseigné une fois sur le dashboard Render uniquement
+      # dans le cas d'un dépôt privé.
       - key: GITHUB_SYNC_TOKEN
         sync: false
         value: ""

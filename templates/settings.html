@@ -358,6 +358,48 @@
                             <span>Synchroniser maintenant</span>
                         </button>
                     </div>
+
+                    <hr style="margin: 0 0 24px; border: none; border-top: 1px solid var(--gray-200);">
+
+                    <div id="siteBlock" style="margin-bottom: 24px;">
+                        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <i class="bi bi-globe" style="font-size: 1.4rem; color: var(--primary);"></i>
+                            <h3 style="margin: 0; font-size: 1.05rem;">Site en ligne — envoi direct (aucun jeton requis)</h3>
+                        </div>
+                        <p style="font-size: 0.88rem; color: var(--gray-500); margin-top: 8px; margin-bottom: 12px;">
+                            Cet ordinateur envoie lui-même la base de données à votre site en ligne
+                            (<code>https://tumika.onrender.com</code>), qui <strong>fusionne les données sans rien écraser</strong>.
+                            Aucune configuration (jeton) n'est nécessaire sur Render. Le mot de passe saisi sert à se
+                            connecter au site (compte administrateur) et reste dans le fichier local protégé.
+                        </p>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px;">
+                            <div>
+                                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--gray-700);">Adresse du site en ligne</label>
+                                <input type="text" id="siteUrl" class="form-control" value="https://tumika.onrender.com" placeholder="https://tumika.onrender.com">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--gray-700);">Identifiant administrateur</label>
+                                <input type="text" id="siteUsername" class="form-control" value="admin" placeholder="admin">
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--gray-700);">Mot de passe administrateur</label>
+                                <input type="password" id="sitePassword" class="form-control" placeholder="••••••" autocomplete="off">
+                            </div>
+                            <div style="display: flex; align-items: flex-end;">
+                                <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--gray-700); cursor: pointer;">
+                                    <input type="checkbox" id="autoSite" checked>
+                                    Mettre le site à jour automatiquement à chaque sauvegarde GitHub
+                                </label>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px;">
+                            <button class="btn btn-success" id="sitePushBtn" onclick="pushSiteNow()" style="min-width: 240px;">
+                                <img id="siteSpinner" src="{{ url_for('static', filename='img/spinner.svg') }}" alt="Chargement" style="width: 20px; height: 20px; display: none; margin-right: 8px; vertical-align: middle;">
+                                <span id="sitePushLabel">Envoyer la base au site en ligne</span>
+                            </button>
+                        </div>
+                        <div id="siteStatus"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -748,8 +790,8 @@ function renderSyncStatus(sync) {
     if (!sync.sync_enabled) {
         box.className = 'alert alert-secondary';
         box.innerHTML = '<i class="bi bi-slash-circle"></i> <strong>Synchronisation désactivée sur cette installation.</strong> ' +
-            'Elle est active uniquement sur le site en ligne (Render) dès que la configuration GitHub est complète ' +
-            '(token + utilisateur + dépôt) : renseignez-les ci-dessus puis Enregistrer.';
+            'Elle est active uniquement sur le site en ligne (Render) dès que le dépôt de sauvegarde est identifié ' +
+            '(utilisateur + dépôt, valeurs par défaut intégrées au code ; jeton requis seulement si le dépôt est privé).';
         document.getElementById('syncNowBtn').disabled = true;
         return;
     }
@@ -808,6 +850,72 @@ async function syncDatabaseNow() {
     }
 }
 
+function renderSiteStatus(d) {
+    const box = document.getElementById('siteStatus');
+    if (!box) return;
+    const label = document.getElementById('sitePushLabel');
+    let html = '';
+
+    if (d.last_site_upload_at) {
+        html += '<div style="background: var(--gray-100); padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 0.9rem;">' +
+                    '<i class="bi bi-globe2"></i> Dernier envoi au site : <strong>' + escapeHtml(formatDateFr(d.last_site_upload_at)) + '</strong>' +
+                '</div>';
+    }
+
+    if (d.last_site_status === 'error') {
+        label.textContent = 'Réessayer l\'envoi au site en ligne';
+        html += '<div class="alert alert-danger" role="alert" style="font-size: 0.9rem;">' +
+                    '<i class="bi bi-x-circle"></i> <strong>Échec de l\'envoi au site.</strong><br>' +
+                    '<code>' + escapeHtml(d.last_site_error || d.error || 'Erreur inconnue') + '</code>' +
+                '</div>';
+    } else {
+        label.textContent = 'Envoyer la base au site en ligne';
+        if (d.last_site_status === 'ok' && d.last_site_upload_at) {
+            html += '<div class="alert alert-success" role="alert" style="font-size: 0.9rem;">' +
+                        '<i class="bi bi-check-circle"></i> Envoi au site réussi (données fusionnées en ligne).' +
+                    '</div>';
+        }
+    }
+    if (d.auto_site && d.last_site_error) {
+        html += '<div style="color: var(--warning-dark, #b45309); font-size: 0.85rem; margin-top: 4px;">' +
+                    '<i class="bi bi-exclamation-triangle"></i> L\'envoi automatique a échoué lors de la dernière sauvegarde GitHub.' +
+                '</div>';
+    }
+
+    box.innerHTML = html;
+}
+
+async function pushSiteNow() {
+    const btn = document.getElementById('sitePushBtn');
+    const spinner = document.getElementById('siteSpinner');
+    const label = document.getElementById('sitePushLabel');
+    if (btn.disabled) return;
+
+    btn.disabled = true;
+    spinner.style.display = 'inline-block';
+    label.textContent = 'Envoi au site en cours…';
+
+    try {
+        const response = await fetch('/api/backup/push-site', { method: 'POST' });
+        const data = await response.json();
+        if (response.ok && data.success) {
+            renderSiteStatus(data);
+            if (typeof showToast === 'function') showToast(data.message || 'Envoi au site réussi', 'success');
+        } else {
+            renderSiteStatus(data);
+            if (typeof showToast === 'function') showToast('L\'envoi au site en ligne a échoué', 'danger');
+        }
+    } catch (error) {
+        console.error('Erreur lors de l\'envoi au site:', error);
+        label.textContent = 'Réessayer l\'envoi au site en ligne';
+        renderSiteStatus({ last_site_status: 'error', last_site_error: 'Erreur réseau ou serveur (site en ligne injoignable).' });
+        if (typeof showToast === 'function') showToast('Erreur réseau lors de l\'envoi au site', 'danger');
+    } finally {
+        btn.disabled = false;
+        spinner.style.display = 'none';
+    }
+}
+
 async function loadGithubConfig() {
     try {
         const response = await fetch('/api/backup/status');
@@ -824,6 +932,14 @@ async function loadGithubConfig() {
         document.getElementById('ghTokenHint').textContent = data.has_token
             ? 'Token déjà enregistré : ' + (data.masked_token || '••••••')
             : 'Aucun token enregistré pour le moment.';
+        document.getElementById('siteUrl').value = data.site_url || 'https://tumika.onrender.com';
+        document.getElementById('siteUsername').value = data.site_username || 'admin';
+        document.getElementById('sitePassword').value = '';
+        document.getElementById('autoSite').checked = (data.auto_site === undefined) ? true : !!data.auto_site;
+        if (data.has_site_password) {
+            document.getElementById('sitePassword').placeholder = 'Mot de passe enregistré (laisser vide pour conserver)';
+        }
+        renderSiteStatus(data);
         renderGhStatus(data);
         loadSyncStatus();
     } catch (error) {
@@ -837,7 +953,11 @@ async function saveGithubConfig() {
         repo: document.getElementById('ghRepo').value.trim(),
         branch: document.getElementById('ghBranch').value.trim(),
         path: document.getElementById('ghPath').value.trim(),
-        token: document.getElementById('ghToken').value.trim()
+        token: document.getElementById('ghToken').value.trim(),
+        site_url: document.getElementById('siteUrl').value.trim(),
+        site_username: document.getElementById('siteUsername').value.trim(),
+        site_password: document.getElementById('sitePassword').value,
+        auto_site: document.getElementById('autoSite').checked
     };
 
     if (!payload.owner || !payload.repo) {
@@ -882,6 +1002,7 @@ async function pushDatabaseToGithub() {
 
         if (response.ok && data.success) {
             renderGhStatus(data);
+            renderSiteStatus(data);
             if (typeof showToast === 'function') showToast(data.message || 'Sauvegarde réussie', 'success');
         } else {
             label.textContent = 'Réessayer la sauvegarde vers GitHub';

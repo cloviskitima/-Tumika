@@ -61,6 +61,13 @@ def _masked_status(cfg):
         'last_backup_at': cfg.get('last_backup_at'),
         'last_status': cfg.get('last_status'),
         'last_error': cfg.get('last_error'),
+        'site_url': cfg.get('site_url') or 'https://tumika.onrender.com',
+        'site_username': cfg.get('site_username') or 'admin',
+        'has_site_password': bool(cfg.get('site_password')),
+        'auto_site': bool(cfg.get('auto_site')),
+        'last_site_upload_at': cfg.get('last_site_upload_at'),
+        'last_site_status': cfg.get('last_site_status'),
+        'last_site_error': cfg.get('last_site_error'),
     }
 
 
@@ -179,6 +186,52 @@ def _push_to_github(cfg):
     raise RuntimeError(_extract_message(r))
 
 
+def _upload_to_site(cfg):
+    """Envoie directement un instantané de la base vers le site en ligne.
+
+    Contrairement au trajet GitHub -> Render, cette méthode ne requiert AUCUN
+    jeton sur le site : l'ordinateur se connecte au site (compte administrateur)
+    puis téléverse la base, que le site fusionne dans sa base (rien n'est écrasé).
+    """
+    site_url = (cfg.get('site_url') or 'https://tumika.onrender.com').strip().rstrip('/')
+    username = (cfg.get('site_username') or 'admin').strip()
+    password = cfg.get('site_password') or ''
+    if not password:
+        raise RuntimeError('Mot de passe du site en ligne non renseigné (Réglages → Site en ligne).')
+
+    session = requests.Session()
+    try:
+        r = session.post('{}/api/login'.format(site_url),
+                         json={'email': username, 'password': password}, timeout=30)
+    except requests.RequestException as e:
+        raise RuntimeError('Impossible de joindre le site en ligne ({}). Vérifiez l\'adresse : {}'.format(site_url, e))
+    try:
+        data = r.json()
+        if r.status_code != 200 or not data.get('success'):
+            raise RuntimeError('Connexion au site en ligne refusée (identifiants incorrects ?).')
+    except (ValueError, KeyError):
+        raise RuntimeError('Réponse inattendue du site en ligne (code {}).'.format(r.status_code))
+
+    snapshot, tmpdir = _build_snapshot()
+    try:
+        try:
+            with open(snapshot, 'rb') as f:
+                r2 = session.post('{}/api/backup/upload'.format(site_url),
+                                  files={'db': ('motostock.db', f, 'application/octet-stream')}, timeout=120)
+        except requests.RequestException as e:
+            raise RuntimeError('Erreur réseau lors de l\'envoi au site en ligne : {}'.format(e))
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    try:
+        d2 = r2.json()
+    except Exception:
+        d2 = {}
+    if r2.status_code != 200 or not d2.get('success'):
+        raise RuntimeError(str(d2.get('message') or 'Le site a refusé le fichier (code {}).'.format(r2.status_code)))
+    return {'sync': d2.get('sync')}
+
+
 @backup_bp.route('/api/backup/status', methods=['GET'])
 @permission_required('settings', 'update')
 def backup_status():
@@ -209,6 +262,15 @@ def backup_config():
     token = str(data.get('token') or '').strip()
     if token:
         cfg['token'] = token
+
+    if 'site_url' in data and data.get('site_url') is not None:
+        cfg['site_url'] = str(data['site_url']).strip().rstrip('/') or 'https://tumika.onrender.com'
+    if 'site_username' in data and data.get('site_username') is not None:
+        cfg['site_username'] = str(data['site_username']).strip() or 'admin'
+    if 'site_password' in data and data.get('site_password') is not None:
+        cfg['site_password'] = str(data['site_password'])
+    if 'auto_site' in data and data.get('auto_site') is not None:
+        cfg['auto_site'] = bool(data['auto_site'])
 
     if not cfg.get('owner') or not cfg.get('repo'):
         return jsonify({'success': False, 'message': 'Le nom d\'utilisateur GitHub et le dépôt sont obligatoires.'}), 400
@@ -252,6 +314,19 @@ def backup_push():
     cfg['last_backup_at'] = now
     cfg['last_status'] = 'ok'
     cfg.pop('last_error', None)
+
+    # Envoi automatique au site en ligne (si activé) — ne bloque pas la sauvegarde
+    site_result = None
+    if cfg.get('auto_site'):
+        try:
+            site_result = _upload_to_site(cfg)
+            cfg['last_site_upload_at'] = now
+            cfg['last_site_status'] = 'ok'
+            cfg.pop('last_site_error', None)
+        except Exception as e:
+            cfg['last_site_status'] = 'error'
+            cfg['last_site_error'] = str(e)
+
     try:
         _save_config(cfg)
     except RuntimeError:
@@ -264,7 +339,80 @@ def backup_push():
         'html_url': result.get('html_url'),
         'last_backup_at': now,
         'last_status': 'ok',
+        'site_upload': site_result,
+        'last_site_upload_at': cfg.get('last_site_upload_at'),
+        'last_site_status': cfg.get('last_site_status'),
+        'last_site_error': cfg.get('last_site_error'),
     })
+
+
+@backup_bp.route('/api/backup/push-site', methods=['POST'])
+@permission_required('settings', 'update')
+def backup_push_site():
+    """Côté ordinateur : envoie la base directement au site en ligne (aucun jeton requis)."""
+    cfg = _load_config()
+    now = datetime.now().isoformat(timespec='seconds')
+    try:
+        result = _upload_to_site(cfg)
+    except Exception as e:
+        cfg['last_site_upload_at'] = now
+        cfg['last_site_status'] = 'error'
+        cfg['last_site_error'] = str(e)
+        try:
+            _save_config(cfg)
+        except RuntimeError:
+            pass
+        return jsonify({
+            'success': False,
+            'message': 'L\'envoi au site en ligne a échoué. Vous pouvez réessayer.',
+            'error': str(e),
+            'last_site_upload_at': now,
+            'last_site_status': 'error',
+        }), 500
+
+    cfg['last_site_upload_at'] = now
+    cfg['last_site_status'] = 'ok'
+    cfg.pop('last_site_error', None)
+    try:
+        _save_config(cfg)
+    except RuntimeError:
+        pass
+
+    return jsonify({
+        'success': True,
+        'message': 'Base de données envoyée au site en ligne et fusionnée avec succès',
+        '@': 'site',
+        'last_site_upload_at': now,
+        'last_site_status': 'ok',
+        'sync': result.get('sync'),
+    })
+
+
+@backup_bp.route('/api/backup/upload', methods=['POST'])
+@permission_required('settings', 'update')
+def backup_upload():
+    """Côté site en ligne : reçoit la base envoyée par l'ordinateur et la fusionne.
+
+    Le fichier reçu est fusionné dans la base existante du site (insérer / mettre
+    à jour ligne par ligne) : les données saisies directement en ligne sont
+    conservées, les données de l'ordinateur arrivent sans rien écraser.
+    """
+    from app.sync import apply_backup_file, sync_status
+    f = request.files.get('db')
+    if not f or not f.filename:
+        return jsonify({'success': False, 'message': 'Aucun fichier reçu.'}), 400
+
+    tmpdir = tempfile.mkdtemp(prefix='tumika_upload_')
+    try:
+        fpath = os.path.join(tmpdir, 'upload.db')
+        f.save(fpath)
+        apply_backup_file(fpath)
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e), 'sync': sync_status()}), 500
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    return jsonify({'success': True, 'message': 'Base fusionnée sur le site en ligne avec succès.', 'sync': sync_status()})
 
 
 @backup_bp.route('/api/backup/sync', methods=['POST'])

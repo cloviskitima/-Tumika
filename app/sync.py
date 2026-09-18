@@ -8,22 +8,27 @@ Flux attendu :
     2. Sur le site en ligne, l'application vérifie GitHub à intervalle régulier
        (à chaque requête, mais limitée à un appel GitHub toutes les N secondes)
        et télécharge la base la plus récente.
-    3. Si le fichier a changé, il est validé puis remplace la base SQLite locale
-       du site : les données locales sont ainsi affichées sur le site à chaque
-       nouvelle sauvegarde, sans manipulation manuelle.
+    3. Si le fichier a changé, il est validé puis fusionné dans la base SQLite
+       du site (insérer / mettre à jour ligne par ligne, sans rien écraser) :
+       les nouvelles données locales sont ainsi affichées sur le site.
+    4. Alternative sans jeton GitHub : l'ordinateur envoie lui-même sa base au
+       site en ligne via /api/backup/upload (même fusion, aucune configuration
+       à faire sur Render).
 
 Activation : uniquement sur le site en ligne. Sur Render (RENDER_EXTERNAL_URL
-présent), la synchro s'active automatiquement dès que la configuration GitHub
-est complète (token + utilisateur + dépôt), que la configuration soit fournie
-par variables d'environnement GITHUB_SYNC_* ou saisie dans les Réglages du site.
-La variable GITHUB_SYNC_ENABLED=1 reste disponible pour forcer l'activation.
-En local (jamais de RENDER_EXTERNAL_URL), la synchro ne peut pas s'activer :
-la base locale ne peut pas être écrasée par le contenu de GitHub.
+présent), la synchro s'active automatiquement dès que le dépôt de sauvegarde est
+identifié (utilisateur + dépôt, valeurs par défaut intégrées au code). Aucun
+jeton n'est requis lorsque le dépôt est public ; GITHUB_SYNC_TOKEN n'est
+nécessaire que pour un dépôt privé. La variable GITHUB_SYNC_ENABLED=1 reste
+disponible pour forcer l'activation. En local (jamais de RENDER_EXTERNAL_URL),
+la synchro ne peut pas s'activer : la base locale ne peut pas être écrasée par
+le contenu de GitHub.
 """
 import base64
 import json
 import logging
 import os
+import shutil
 import sqlite3
 import tempfile
 import time
@@ -34,6 +39,9 @@ from flask import current_app
 
 BASE_URL = 'https://api.github.com'
 DEFAULT_PATH = 'backups/motostock.db'
+# Récupération sans jeton quand le dépôt de sauvegarde est public.
+DEFAULT_OWNER = 'cloviskitima'
+DEFAULT_REPO = '-Tumika-backup'
 
 logger = logging.getLogger('tumika.sync')
 
@@ -71,6 +79,12 @@ def get_config(app=None):
     for key, value in env.items():
         if value:
             cfg[key] = value
+
+    # Valeurs par défaut : fonctionne sans AUCUNE configuration (dépôt public).
+    cfg.setdefault('owner', DEFAULT_OWNER)
+    cfg.setdefault('repo', DEFAULT_REPO)
+    cfg.setdefault('branch', 'main')
+    cfg.setdefault('path', DEFAULT_PATH)
     return cfg
 
 
@@ -78,8 +92,8 @@ def is_enabled(app=None):
     """Active la synchronisation sur le site en ligne.
 
     Sur Render (détecté via RENDER_EXTERNAL_URL), la synchro s'active dès que
-    la configuration GitHub est complète (token + utilisateur + dépôt), avec
-    ou sans la variable GITHUB_SYNC_ENABLED. En local aucune activation n'est
+    les identifiants du dépôt sont connus (utilisateur + dépôt) ; le token n'est
+    nécessaire qu'en cas de dépôt privé. En local aucune activation n'est
     possible (jamais de RENDER_EXTERNAL_URL) : la base locale reste maîtresse.
     """
     on_render_hebergeur = bool(os.environ.get('RENDER_EXTERNAL_URL'))
@@ -87,7 +101,7 @@ def is_enabled(app=None):
     if not (flag_demandee or on_render_hebergeur):
         return False
     cfg = get_config(app)
-    return bool(cfg.get('token') and cfg.get('owner') and cfg.get('repo'))
+    return bool(cfg.get('owner') and cfg.get('repo'))
 
 
 def interval_seconds():
@@ -114,10 +128,11 @@ def _save_state(instance, data):
 
 
 def _headers(cfg):
-    return {
-        'Authorization': 'Bearer ' + (cfg.get('token') or ''),
-        'Accept': 'application/vnd.github+json',
-    }
+    token = (cfg.get('token') or '').strip()
+    headers = {'Accept': 'application/vnd.github+json'}
+    if token:
+        headers['Authorization'] = 'Bearer ' + token
+    return headers
 
 
 def _latest_sha(cfg):
@@ -305,7 +320,7 @@ def sync_status(app=None):
     state = _load_state((app or current_app).instance_path)
     return {
         'sync_enabled': is_enabled(app),
-        'configured': bool(cfg.get('token') and cfg.get('owner') and cfg.get('repo')),
+        'configured': bool(cfg.get('owner') and cfg.get('repo')),
         'owner': cfg.get('owner', ''),
         'repo': cfg.get('repo', ''),
         'path': cfg.get('path') or DEFAULT_PATH,
@@ -319,8 +334,74 @@ def sync_status(app=None):
     }
 
 
+def apply_backup_file(file_path, app=None):
+    """Fusionne un fichier SQLite dans la base live du site.
+
+    Rien n'est écrasé : les lignes du fichier sont insérées ou mises à jour par
+    clé primaire dans la base existante (données du site conservées). Le résultat
+    est vérifié puis écrit EN PLACE dans le fichier de la base (API de sauvegarde
+    SQLite, sans renommage : fiable sous Windows, aucun verrou d'antivirus).
+    Lève RuntimeError('base_non_sqlite'|'fichier_invalide'|'fichier_vide') en cas
+    de problème. Idempotent : réappliquer le même fichier ne crée pas de doublons.
+    """
+    app = app or current_app
+    live = _live_db_path(app)
+    if not live:
+        raise RuntimeError('base_non_sqlite')
+    if not os.path.exists(file_path) or not os.path.getsize(file_path):
+        raise RuntimeError('fichier_vide')
+    if not _validate(file_path):
+        raise RuntimeError('fichier_invalide')
+
+    # Fichier fusionné temporaire, dans le même dossier que la base (VM Windows).
+    base_dir = os.path.dirname(live) or tempfile.gettempdir()
+    fd, merged_path = tempfile.mkstemp(prefix='tumika_merge_', suffix='.db', dir=base_dir)
+    os.close(fd)
+    try:
+        # 1) Fusion : copie de la base actuelle + application des lignes du fichier
+        if os.path.exists(live):
+            _copy_sqlite(live, merged_path)
+            _apply_delta(file_path, merged_path)
+        else:
+            shutil.copyfile(file_path, merged_path)
+
+        # 2) Validation avant toute écriture
+        if not _validate(merged_path):
+            raise RuntimeError('fichier_invalide')
+
+        # 3) Libérer les connexions SQLAlchemy (fichier non verrouillé)
+        from app import db
+        try:
+            with app.app_context():
+                db.engine.dispose()
+        except Exception:
+            pass
+
+        # 4) Réserve de sécurité : copie de la base actuelle telle quelle
+        if os.path.exists(live):
+            try:
+                shutil.copyfile(live, live + '.pre-sync')
+            except OSError:
+                pass
+
+        # 5) Écriture en place du contenu fusionné (sans renommer le fichier)
+        src = sqlite3.connect(merged_path)
+        dst = sqlite3.connect(live)
+        try:
+            src.backup(dst)
+        finally:
+            dst.close()
+            src.close()
+    finally:
+        if os.path.exists(merged_path):
+            try:
+                os.remove(merged_path)
+            except OSError:
+                pass
+
+
 def force_sync(app=None):
-    """Télécharge la base de GitHub et remplace la base SQLite du site (retourne un statut)."""
+    """Télécharge la base de GitHub et la fusionne dans la base du site (retourne un statut)."""
     app = app or current_app
     if not is_enabled(app):
         return {'applied': False, 'reason': 'sync_desactive'}
@@ -351,56 +432,13 @@ def force_sync(app=None):
             _save_state(instance, state)
             return {'applied': False, 'reason': 'telechargement_impossible'}
 
-        if not _validate(tmp_path):
-            state['last_error'] = 'fichier_invalide'
-            _save_state(instance, state)
-            return {'applied': False, 'reason': 'fichier_invalide'}
-
-        live = _live_db_path(app)
-        if not live:
-            state['last_error'] = 'base_non_sqlite'
-            _save_state(instance, state)
-            return {'applied': False, 'reason': 'base_non_sqlite'}
-
-        # Fusion : la base existante est mise à jour (pas écrasée). On travaille
-        # sur une copie, validée puis échangée atomiquement. Les données saisies
-        # directement en ligne sont conservées ; les données locales arrivent
-        # depuis GitHub, ligne par ligne (insertions / mises à jour par clé).
-        merged_fd, merged_path = tempfile.mkstemp(prefix='tumika_merge_', suffix='.db')
-        os.close(merged_fd)
         try:
-            if os.path.exists(live):
-                _copy_sqlite(live, merged_path)
-                _apply_delta(tmp_path, merged_path)
-            else:
-                os.replace(tmp_path, merged_path)
-
-            if not _validate(merged_path):
-                state['last_error'] = 'fichier_invalide'
-                _save_state(instance, state)
-                return {'applied': False, 'reason': 'fichier_invalide'}
-
-            # Fermer les connexions SQLAlchemy (libère le fichier, requis notamment
-            # sur Windows), puis remplacement atomique : au prochain accès, le
-            # moteur rouvrira le fichier fusionné.
-            from app import db
-            try:
-                with app.app_context():
-                    db.engine.dispose()
-            except Exception:
-                pass
-            if os.path.exists(live):
-                try:
-                    os.replace(live, live + '.pre-sync')
-                except OSError:
-                    pass
-            os.replace(merged_path, live)
-        finally:
-            if os.path.exists(merged_path):
-                try:
-                    os.remove(merged_path)
-                except OSError:
-                    pass
+            apply_backup_file(tmp_path, app)
+        except RuntimeError as e:
+            reason = str(e) or 'fichier_invalide'
+            state['last_error'] = reason
+            _save_state(instance, state)
+            return {'applied': False, 'reason': reason}
 
         state['sha'] = sha
         state['updated_at'] = now

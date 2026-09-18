@@ -96,14 +96,13 @@ ordinateur** : GitHub sert de pont entre le travail local et le site en ligne.
 
 | Variable | Valeur attendue |
 |---|---|
-| `GITHUB_SYNC_ENABLED` | `1` (facultatif sur Render : la synchro s'active toute seule dès que la config GitHub est complète) |
-| `GITHUB_SYNC_TOKEN` | token GitHub scpope `repo` — ⚠️ à renseigner **une fois** sur le dashboard Render (Environnement) |
+| `GITHUB_SYNC_ENABLED` | `1` (facultatif sur Render : la synchro s'active toute seule dès que la config GitHub est connue) |
+| `GITHUB_SYNC_TOKEN` | **Facultatif** : seulement si le dépôt est **privé**. Le jeton est inutile pour un dépôt public (défaut : `-Tumika-backup` est public). Si vous le renseignez : dashboard Render → *Environment* |
 
-> 💡 **Alternative plus simple** : sur le site en ligne, la synchro s'active
-> automatiquement (Render est détecté) dès que le token est renseigné — soit
-> via la variable `GITHUB_SYNC_TOKEN` (persistante, recommandée), soit en
-> **saisissant la configuration dans Réglages → Sauvegarde GitHub** du site
-> (réserve `-Tumika-backup` + token) puis « Enregistrer la configuration ».
+> 💡 **Sans aucune configuration chez Render** : le dépôt de sauvegarde étant
+> public, l'application s'active automatiquement sur le site (Render est
+> détecté) et récupère `cloviskitima/-Tumika-backup → backups/motostock.db`
+> sans jeton, sans variable d'environnement, sans saisie manuelle.
 > En local, rien ne s'active jamais : votre base locale reste maîtresse.
 
 > ⚠️ **Important** : `GITHUB_SYNC_ENABLED` est à mettre **uniquement chez
