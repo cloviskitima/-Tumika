@@ -12,9 +12,13 @@ Flux attendu :
        du site : les données locales sont ainsi affichées sur le site à chaque
        nouvelle sauvegarde, sans manipulation manuelle.
 
-Activation : réservée au site en ligne via la variable d'environnement
-GITHUB_SYNC_ENABLED=1 (uniquement chez Render — jamais sur l'ordinateur local,
-sinon la base locale serait écrasée par le contenu de GitHub).
+Activation : uniquement sur le site en ligne. Sur Render (RENDER_EXTERNAL_URL
+présent), la synchro s'active automatiquement dès que la configuration GitHub
+est complète (token + utilisateur + dépôt), que la configuration soit fournie
+par variables d'environnement GITHUB_SYNC_* ou saisie dans les Réglages du site.
+La variable GITHUB_SYNC_ENABLED=1 reste disponible pour forcer l'activation.
+En local (jamais de RENDER_EXTERNAL_URL), la synchro ne peut pas s'activer :
+la base locale ne peut pas être écrasée par le contenu de GitHub.
 """
 import base64
 import json
@@ -71,7 +75,16 @@ def get_config(app=None):
 
 
 def is_enabled(app=None):
-    if os.environ.get('GITHUB_SYNC_ENABLED') != '1':
+    """Active la synchronisation sur le site en ligne.
+
+    Sur Render (détecté via RENDER_EXTERNAL_URL), la synchro s'active dès que
+    la configuration GitHub est complète (token + utilisateur + dépôt), avec
+    ou sans la variable GITHUB_SYNC_ENABLED. En local aucune activation n'est
+    possible (jamais de RENDER_EXTERNAL_URL) : la base locale reste maîtresse.
+    """
+    on_render_hebergeur = bool(os.environ.get('RENDER_EXTERNAL_URL'))
+    flag_demandee = os.environ.get('GITHUB_SYNC_ENABLED') == '1'
+    if not (flag_demandee or on_render_hebergeur):
         return False
     cfg = get_config(app)
     return bool(cfg.get('token') and cfg.get('owner') and cfg.get('repo'))

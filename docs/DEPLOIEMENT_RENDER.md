@@ -96,13 +96,15 @@ ordinateur** : GitHub sert de pont entre le travail local et le site en ligne.
 
 | Variable | Valeur attendue |
 |---|---|
-| `GITHUB_SYNC_ENABLED` | `1` (active sur le site, jamais en local) |
+| `GITHUB_SYNC_ENABLED` | `1` (facultatif sur Render : la synchro s'active toute seule dès que la config GitHub est complète) |
 | `GITHUB_SYNC_TOKEN` | token GitHub scpope `repo` — ⚠️ à renseigner **une fois** sur le dashboard Render (Environnement) |
-| `GITHUB_SYNC_OWNER` | `cloviskitima` |
-| `GITHUB_SYNC_REPO` | `-Tumika-backup` |
-| `GITHUB_SYNC_BRANCH` | `main` |
-| `GITHUB_SYNC_PATH` | `backups/motostock.db` |
-| `GITHUB_SYNC_INTERVAL` | `30` (secondes entre deux vérifications) |
+
+> 💡 **Alternative plus simple** : sur le site en ligne, la synchro s'active
+> automatiquement (Render est détecté) dès que le token est renseigné — soit
+> via la variable `GITHUB_SYNC_TOKEN` (persistante, recommandée), soit en
+> **saisissant la configuration dans Réglages → Sauvegarde GitHub** du site
+> (réserve `-Tumika-backup` + token) puis « Enregistrer la configuration ».
+> En local, rien ne s'active jamais : votre base locale reste maîtresse.
 
 > ⚠️ **Important** : `GITHUB_SYNC_ENABLED` est à mettre **uniquement chez
 > Render**. Sur l'ordinateur local, gardez-la absente/à `0`, sinon la base

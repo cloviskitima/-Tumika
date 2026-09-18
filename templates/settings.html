@@ -748,7 +748,8 @@ function renderSyncStatus(sync) {
     if (!sync.sync_enabled) {
         box.className = 'alert alert-secondary';
         box.innerHTML = '<i class="bi bi-slash-circle"></i> <strong>Synchronisation désactivée sur cette installation.</strong> ' +
-            'Elle est active uniquement sur le site en ligne (Render) via la variable <code>GITHUB_SYNC_ENABLED=1</code>.';
+            'Elle est active uniquement sur le site en ligne (Render) dès que la configuration GitHub est complète ' +
+            '(token + utilisateur + dépôt) : renseignez-les ci-dessus puis Enregistrer.';
         document.getElementById('syncNowBtn').disabled = true;
         return;
     }
