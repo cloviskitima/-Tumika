@@ -1301,15 +1301,26 @@ function generateQRCode(reference) {
 }
 
 async function deleteProduct(productId) {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
-    
     try {
-        const response = await fetch(`/api/produits/${productId}`, { method: 'DELETE' });
+        const checkResp = await fetch(`/api/produits/${productId}?mode=check`);
+        const checkData = await checkResp.json();
+        const impacts = checkData && checkData.impacts;
+
+        if (impacts && (impacts.total || 0) > 0) {
+            const ok = await confirmCascade('Supprimer ce produit ?', impacts, 'Le produit et toutes ses ventes, crédits, encaissements, mouvements de caisse et écritures comptables liés seront supprimés.');
+            if (!ok) return;
+        } else {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
+        }
+
+        const response = await fetch(`/api/produits/${productId}?mode=force`, { method: 'DELETE' });
+        const result = await response.json();
         if (response.ok) {
+            if (typeof showToast === 'function') showToast(result.message || 'Produit supprimé', 'success');
             loadProducts();
             loadStockStatistics();
         } else {
-            alert('Erreur lors de la suppression');
+            alert(result.message || 'Erreur lors de la suppression');
         }
     } catch (error) {
         console.error('Erreur lors de la suppression:', error);

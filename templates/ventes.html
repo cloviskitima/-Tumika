@@ -537,9 +537,42 @@ const VISION_ANALYSE_RESEND = 1500;
 const VISION_FRAME_DELTA = 16;
 const VISION_FRAME_MAX = 640;
 
+let currentTaux = 2800; // Taux USD -> FC appliqué aux ventes (chargé depuis Réglages)
+
+// Taux réel : la saisie manuelle (si > 0) prime, sinon le taux configuré dans Réglages
+function getCurrentRate() {
+    const input = document.getElementById('exchangeRate');
+    const v = parseFloat(input ? input.value : '');
+    return (v && v > 0) ? v : currentTaux;
+}
+
+function updateTauxBadge() {
+    const badge = document.getElementById('salesRateBadge');
+    if (badge) badge.textContent = '1 $ = ' + Math.round(getCurrentRate()).toLocaleString('fr-FR') + ' FC';
+}
+
+async function chargerTauxCourant() {
+    try {
+        const r = await fetch('/api/taux/courant?source=USD&target=CDF');
+        const d = await r.json();
+        if (d.success && d.taux) {
+            currentTaux = d.taux;
+            const input = document.getElementById('exchangeRate');
+            if (input && !input.value) input.value = d.taux;
+        }
+    } catch (e) {
+        console.error('Taux courant indisponible:', e);
+    }
+    const row = document.getElementById('exchangeRateRow');
+    if (row) row.style.display = '';
+    updateTauxBadge();
+    updateCartSummary();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     loadSales();
     loadSalesStatistics();
+    chargerTauxCourant();
 });
 
 // Debounce helper
@@ -593,7 +626,7 @@ async function loadSalesStatistics() {
 
         const avgFC = data.panier_moyen || 0;
         document.getElementById('avgSale').textContent = formatCurrency(avgFC, 'CDF');
-        const rate = 2800; // Taux de change standard RDC
+        const rate = getCurrentRate();
         document.getElementById('avgSaleUSD').textContent = '$ ' + (avgFC / rate).toFixed(2);
     } catch (error) {
         console.error('Erreur statistiques ventes:', error);
@@ -865,7 +898,7 @@ function removeFromCart(index) {
 
 function getSaleTotal() {
     const saleCurrency = document.getElementById('saleCurrency').value;
-    const rate = 2800; // Taux de change standard FC/USD
+    const rate = getCurrentRate(); // taux paramétré (Réglages → Taux de change)
 
     let subtotalFC = 0;
     let subtotalUSD = 0;
@@ -896,6 +929,10 @@ function updateCartSummary() {
 
     document.getElementById('subtotal').textContent = isUSD ? `$ ${totals.subtotal.toFixed(2)}` : `${formatCurrency(totals.subtotal, 'CDF')}`;
     document.getElementById('total').textContent = isUSD ? `$ ${totals.total.toFixed(2)}` : `${formatCurrency(totals.total, 'CDF')}`;
+
+    const row = document.getElementById('exchangeRateRow');
+    if (row) row.style.display = '';
+    updateTauxBadge();
 }
 
 function openSaleModal() {
@@ -937,7 +974,8 @@ async function saveSale() {
         montant: totals.total,
         mode_paiement: paymentMethod,
         date_echeance: paymentMethod === 'credit' ? dueDate : null,
-        devise: totals.currency
+        devise: totals.currency,
+        taux_change: getCurrentRate()
     };
 
     try {
@@ -1095,7 +1133,7 @@ async function generateInvoice(saleId) {
         const sale = data.vente;
 
         const dateFormatted = formatDate(sale.date);
-        const rate = 2800;
+        const rate = (sale.taux_change && sale.taux_change > 0) ? sale.taux_change : getCurrentRate();
         const isUSD = (sale.devise === 'USD');
 
         let totalFC = isUSD ? (sale.montant * rate) : sale.montant;
@@ -1299,15 +1337,28 @@ async function payCreditSale(saleId) {
 }
 
 async function deleteSale(saleId) {
-    if (!confirm(`Supprimer la vente #${saleId} ? Le stock sera réincrémenté.`)) return;
-
     try {
-        const response = await fetch('/api/ventes/' + saleId, { method: 'DELETE' });
+        const checkResp = await fetch(`/api/ventes/${saleId}?mode=check`);
+        const checkData = await checkResp.json();
+        const impacts = checkData && checkData.impacts;
+
+        if (impacts && (impacts.total || 0) > 0) {
+            const ok = await confirmCascade(`Annuler la vente #${saleId} ?`, impacts, 'Le stock des produits sera réincrémenté.');
+            if (!ok) return;
+        } else {
+            if (!confirm(`Supprimer la vente #${saleId} ? Le stock sera réincrémenté.`)) return;
+        }
+
+        const response = await fetch(`/api/ventes/${saleId}?mode=force`, { method: 'DELETE' });
         const result = await response.json();
         if (response.ok && result.success) {
             if (typeof showToast === 'function') showToast('Vente supprimée avec succès', 'success');
             loadSales();
             loadSalesStatistics();
+        } else if (result && result.confirmation) {
+            if (typeof showToast === 'function') showToast('Annulation annulée', 'info');
+        } else {
+            if (typeof showToast === 'function') showToast('Erreur lors de la suppression de la vente', 'danger');
         }
     } catch (e) {
         console.error(e);

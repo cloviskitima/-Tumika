@@ -750,14 +750,25 @@ async function saveMovement() {
 }
 
 async function deleteMovement(movementId) {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce mouvement de caisse ? Le solde s\'actualisera automatiquement.')) return;
-    
     try {
-        const response = await fetch(`/api/caisse/mouvements/${movementId}`, { method: 'DELETE' });
+        const checkResp = await fetch(`/api/caisse/mouvements/${movementId}?mode=check`);
+        const checkData = await checkResp.json();
+        const impacts = checkData && checkData.impacts;
+
+        if (impacts && (impacts.total || 0) > 0) {
+            const ok = await confirmCascade('Supprimer ce mouvement de caisse ?', impacts, 'Le solde s\'actualisera automatiquement.');
+            if (!ok) return;
+        } else {
+            if (!confirm('Êtes-vous sûr de vouloir supprimer ce mouvement de caisse ? Le solde s\'actualisera automatiquement.')) return;
+        }
+
+        const response = await fetch(`/api/caisse/mouvements/${movementId}?mode=force`, { method: 'DELETE' });
         const result = await response.json();
         if (response.ok && result.success) {
             loadMovements();
             loadCashStatistics();
+        } else if (result && result.confirmation) {
+            if (typeof showToast === 'function') showToast('Suppression annulée', 'info');
         } else {
             alert(result.message || 'Erreur lors de la suppression');
         }

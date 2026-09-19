@@ -202,30 +202,53 @@ def enregistrer_image(file, upload_folder):
     return f"/static/uploads/{unique_filename}"
 
 
+def _devise_variants(devise):
+    """Tous les codes acceptés pour une devise normalisée (CDF <-> FC/XAF, USD <-> $)."""
+    d = normalize_devise(devise)
+    if d == 'USD':
+        return ['USD', '$']
+    if d == 'CDF':
+        return ['CDF', 'FC', 'XAF']
+    return [d]
+
+
 def get_exchange_rate(source, target, operation_date=None):
-    """Retourne le taux de change le plus récent valide pour une date d'opération."""
+    """Retourne le taux de change le plus récent valide pour une date d'opération.
+
+    Les codes de devise sont normalisés (CDF/FC/XAF équivalents, USD/$ équivalents),
+    donc un taux enregistré en 'CDF' ou 'XAF' est bien retrouvé quel que soit le code utilisé.
+    """
     src = normalize_devise(source)
     tgt = normalize_devise(target)
     if src == tgt:
         return 1.0
 
-    query = TauxChange.query.filter_by(devise_source=source, devise_cible=target)
+    src_variants = _devise_variants(src)
+    tgt_variants = _devise_variants(tgt)
+
+    query = TauxChange.query.filter(
+        TauxChange.devise_source.in_(src_variants),
+        TauxChange.devise_cible.in_(tgt_variants),
+    )
     if operation_date:
         query = query.filter(TauxChange.effective_date <= operation_date)
     taux = query.order_by(TauxChange.effective_date.desc()).first()
     if taux and taux.taux:
         return float(taux.taux)
 
-    inverse_query = TauxChange.query.filter_by(devise_source=target, devise_cible=source)
+    inverse_query = TauxChange.query.filter(
+        TauxChange.devise_source.in_(tgt_variants),
+        TauxChange.devise_cible.in_(src_variants),
+    )
     if operation_date:
         inverse_query = inverse_query.filter(TauxChange.effective_date <= operation_date)
     inverse = inverse_query.order_by(TauxChange.effective_date.desc()).first()
     if inverse and inverse.taux:
         return 1.0 / float(inverse.taux)
 
-    if src == 'USD' and tgt in ['CDF', 'FC', 'XAF']:
+    if src == 'USD' and tgt == 'CDF':
         return 2800.0
-    if src in ['CDF', 'FC', 'XAF'] and tgt == 'USD':
+    if src == 'CDF' and tgt == 'USD':
         return 1.0 / 2800.0
 
     return 1.0
@@ -519,49 +542,95 @@ def update_produit(id):
             'message': f'Erreur lors de la mise à jour: {str(e)}'
         }), 400
 
+def _impacts_produit(produit_id):
+    """Compte tout ce qui serait supprimé en cascade avec ce produit."""
+    lignes = ProduitVendu.query.filter_by(produit_id=produit_id).all()
+    vente_ids = sorted({pv.vente_id for pv in lignes if pv.vente_id})
+    nb_lignes = len(lignes)
+    nb_ventes = len(vente_ids)
+    nb_credits = nb_caisse = nb_ecritures = 0
+    if vente_ids:
+        nb_credits = Vente.query.filter(Vente.id.in_(vente_ids), Vente.statut == 'pending').count()
+        nb_caisse = CaisseMovement.query.filter(CaisseMovement.vente_id.in_(vente_ids)).count()
+        nb_ecritures = EcritureComptable.query.filter(
+            EcritureComptable.source.in_(['vente', 'vente_credit', 'vente_paiement']),
+            EcritureComptable.source_id.in_(vente_ids)).count()
+    impacts = {
+        'lignes_ventes': nb_lignes,
+        'ventes': nb_ventes,
+        'credits_en_attente': nb_credits,
+        'mouvements_caisse': nb_caisse,
+        'ecritures_comptables': nb_ecritures,
+        'activites_stock': ActiviteStock.query.filter_by(produit_id=produit_id).count(),
+        'reapprovisionnements': Reapprovisionnement.query.filter_by(produit_id=produit_id).count(),
+        'signatures': ProduitSignature.query.filter_by(produit_id=produit_id).count(),
+        'corrections': CorrectionIdentification.query.filter_by(produit_id=produit_id).count(),
+    }
+    impacts['total'] = sum(v for k, v in impacts.items() if k != 'total')
+    return impacts
+
+
 @api_bp.route('/produits/<int:id>', methods=['DELETE'])
 def delete_produit(id):
-    """Supprime un produit"""
+    """Supprime un produit (et tout l'historique lié, en cascade avec confirmation).
+
+    ?mode=check     → renvoie le décompte des opérations liées sans rien supprimer.
+    ?mode=force     → supprime le produit ET toutes les opérations liées (ventes,
+                      crédits, encaissements, mouvements de caisse, écritures
+                      comptables, journal de stock, réapprovisionnements).
+    (défaut)        → comme check, mais renvoie HTTP 409 si de l'historique existe.
+    """
+    produit = Produit.query.get_or_404(id)
+    mode = request.args.get('mode', '')
+    impacts = _impacts_produit(id)
+
+    if mode == 'check':
+        return jsonify({'success': True, 'confirmation': True, 'impacts': impacts})
+
+    if mode != 'force' and impacts['total'] > 0:
+        return jsonify({
+            'success': False,
+            'confirmation': True,
+            'message': 'Ce produit possède un historique. Confirmez la suppression en cascade.',
+            'impacts': impacts,
+        }), 409
+
     try:
-        produit = Produit.query.get_or_404(id)
-        
-        # Supprimer les fichiers images
-        if produit.image_url_1:
-            try:
-                file_path = os.path.join(current_app.root_path, produit.image_url_1.lstrip('/'))
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-            except:
-                pass
-        
-        if produit.image_url_2:
-            try:
-                file_path = os.path.join(current_app.root_path, produit.image_url_2.lstrip('/'))
-                if os.path.exists(file_path):
-                    os.remove(file_path)
-            except:
-                pass
-        
-        # Nettoyage du dataset et des corrections liés
-        try:
-            ProduitSignature.query.filter_by(produit_id=produit.id).delete()
-            CorrectionIdentification.query.filter_by(produit_id=produit.id).delete()
-        except Exception:
-            pass
-        
-        # Journaliser la suppression avant de supprimer le produit
-        enregistrer_activite_stock(
-            produit.id, 'suppression', produit.quantite, 0,
-            f"Suppression du produit (il restait {produit.quantite} unité(s))"
-        )
+        # 1. Ventes contenant ce produit -> supprimer aussi leurs opérations liées
+        vente_ids = [pv.vente_id for pv in ProduitVendu.query.filter_by(produit_id=id).all() if pv.vente_id]
+        vente_ids = list(dict.fromkeys(vente_ids))
+        if vente_ids:
+            EcritureComptable.query.filter(
+                EcritureComptable.source.in_(['vente', 'vente_credit', 'vente_paiement']),
+                EcritureComptable.source_id.in_(vente_ids)).delete(synchronize_session=False)
+            CaisseMovement.query.filter(CaisseMovement.vente_id.in_(vente_ids)).delete(synchronize_session=False)
+            ProduitVendu.query.filter(ProduitVendu.vente_id.in_(vente_ids)).delete(synchronize_session=False)
+            Vente.query.filter(Vente.id.in_(vente_ids)).delete(synchronize_session=False)
+
+        # 2. Historique propre au produit
+        ProduitSignature.query.filter_by(produit_id=id).delete()
+        CorrectionIdentification.query.filter_by(produit_id=id).delete()
+        Reapprovisionnement.query.filter_by(produit_id=id).delete()
+        ActiviteStock.query.filter_by(produit_id=id).delete()
+
+        # 3. Fichiers images
+        for url in (produit.image_url_1, produit.image_url_2):
+            if url:
+                try:
+                    file_path = os.path.join(current_app.root_path, url.lstrip('/'))
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                except Exception:
+                    pass
+
+        # 4. Le produit lui-même
         db.session.delete(produit)
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
-            'message': 'Produit supprimé avec succès'
+            'message': 'Produit supprimé ainsi que tout son historique lié'
         })
-        
     except Exception as e:
         db.session.rollback()
         return jsonify({
@@ -1782,11 +1851,40 @@ def get_activites_caisse():
         })
     except Exception as e:
         return jsonify({'success': False, 'message': f'Erreur: {str(e)}'}), 400
-def delete_sale(id):
-    """Supprime une vente, réincrémente le stock et supprime le mouvement de caisse lié"""
-    try:
-        vente = Vente.query.get_or_404(id)
 
+@api_bp.route('/ventes/<int:id>', methods=['DELETE'])
+def delete_sale(id):
+    """Supprime une vente, réincrémente le stock et supprime le mouvement de caisse lié.
+
+    ?mode=check → décompte des opérations liées sans rien supprimer.
+    ?mode=force → annulation complète en cascade.
+    """
+    vente = Vente.query.get_or_404(id)
+    mode = request.args.get('mode', '')
+    nb_produits = len(vente.produits_vendus)
+    nb_caisse = CaisseMovement.query.filter_by(vente_id=vente.id).count()
+    nb_ecritures = EcritureComptable.query.filter(
+        EcritureComptable.source_id == vente.id,
+        EcritureComptable.source.in_(['vente', 'vente_credit', 'vente_paiement'])).count()
+    impacts = {
+        'lignes_ventes': nb_produits,
+        'mouvements_caisse': nb_caisse,
+        'ecritures_comptables': nb_ecritures,
+        'credit_en_attente': vente.statut == 'pending',
+        'restaure_stock': nb_produits > 0,
+        'total': nb_produits + nb_caisse + nb_ecritures,
+    }
+    if mode == 'check':
+        return jsonify({'success': True, 'confirmation': True, 'impacts': impacts})
+    if mode != 'force' and impacts['total'] > 0:
+        return jsonify({
+            'success': False,
+            'confirmation': True,
+            'message': "Confirmez l'annulation complète de cette vente (stock réincrémenté).",
+            'impacts': impacts,
+        }), 409
+
+    try:
         # 1. Réincrémenter les stocks des produits
         for pv in vente.produits_vendus:
             if pv.produit:
@@ -1800,13 +1898,14 @@ def delete_sale(id):
         # 2. Supprimer les mouvements de caisse liés
         mouvements_caisse = CaisseMovement.query.filter_by(vente_id=vente.id).all()
         for m in mouvements_caisse:
+            EcritureComptable.query.filter_by(source='caisse', source_id=m.id).delete(synchronize_session=False)
             db.session.delete(m)
 
-        # 2bis. Supprimer les écritures comptables liées
+        # 3. Supprimer les écritures comptables liées à la vente
         EcritureComptable.query.filter(EcritureComptable.source_id == vente.id,
-                                       EcritureComptable.source.in_(['vente', 'vente_credit', 'vente_paiement'])).delete()
+                                       EcritureComptable.source.in_(['vente', 'vente_credit', 'vente_paiement'])).delete(synchronize_session=False)
 
-        # 3. Supprimer la vente
+        # 4. Supprimer la vente (et ses lignes de produits vendus)
         db.session.delete(vente)
         db.session.commit()
 
@@ -2222,17 +2321,34 @@ def create_caisse_movement():
 
 @api_bp.route('/caisse/mouvements/<int:id>', methods=['DELETE'])
 def delete_caisse_mouvement(id):
-    """Supprime un mouvement de caisse manuel uniquement"""
-    try:
-        mouvement = CaisseMovement.query.get_or_404(id)
-        if mouvement.vente_id:
-            return jsonify({
-                'success': False,
-                'message': 'Ce mouvement provient d\'une vente. Veuillez le supprimer depuis la gestion des ventes.'
-            }), 400
+    """Supprime un mouvement de caisse manuel et ses écritures comptables (avec confirmation).
 
+    ?mode=check → décompte des écritures liées sans rien supprimer.
+    ?mode=force → suppression en cascade.
+    """
+    mode = request.args.get('mode', '')
+    mouvement = CaisseMovement.query.get_or_404(id)
+    if mouvement.vente_id:
+        return jsonify({
+            'success': False,
+            'message': 'Ce mouvement provient d\'une vente. Veuillez le supprimer depuis la gestion des ventes.'
+        }), 400
+
+    nb_ecritures = EcritureComptable.query.filter_by(source='caisse', source_id=mouvement.id).count()
+    impacts = {'ecritures_comptables': nb_ecritures, 'total': nb_ecritures}
+    if mode == 'check':
+        return jsonify({'success': True, 'confirmation': True, 'impacts': impacts})
+    if mode != 'force' and nb_ecritures:
+        return jsonify({
+            'success': False,
+            'confirmation': True,
+            'message': 'Ce mouvement génère des écritures comptables qui seront aussi supprimées.',
+            'impacts': impacts,
+        }), 409
+
+    try:
         db.session.delete(mouvement)
-        EcritureComptable.query.filter_by(source='caisse', source_id=mouvement.id).delete()
+        EcritureComptable.query.filter_by(source='caisse', source_id=mouvement.id).delete(synchronize_session=False)
         db.session.commit()
         return jsonify({'success': True, 'message': 'Mouvement de caisse supprimé'})
     except Exception as e:
@@ -3101,6 +3217,21 @@ def get_taux_change():
             'success': False,
             'message': f'Erreur: {str(e)}'
         }), 400
+
+
+@api_bp.route('/taux/courant', methods=['GET'])
+def get_taux_courant():
+    """Taux de change actuel (ex: USD -> CDF) utilisé par l'écran des ventes.
+    Accessible à tout utilisateur connecté (lecture)."""
+    source = normalize_devise(request.args.get('source', 'USD'))
+    target = normalize_devise(request.args.get('target', 'CDF'))
+    taux = get_exchange_rate(source, target)
+    return jsonify({
+        'success': True,
+        'source': source,
+        'target': target,
+        'taux': round(taux, 6),
+    })
 
 @api_bp.route('/taux-change', methods=['POST'])
 def create_taux_change():
