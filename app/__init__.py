@@ -47,10 +47,13 @@ def _sauvegarder_avant_migration(app):
     try:
         os.makedirs(dossier, exist_ok=True)
         from datetime import datetime
-        import shutil as _shutil
+        from app.utils.sauvegarde_sqlite import copie_sqlite_consistante
         cible = os.path.join(dossier, 'avant-migration-%s.db'
                              % datetime.now().strftime('%Y%m%d-%H%M%S'))
-        _shutil.copy2(base, cible)
+        methode, message = copie_sqlite_consistante(base, cible)
+        if methode == 'echec':
+            _log.error('Sauvegarde avant migration IMPOSSIBLE : %s', message)
+            return None
         # On ne garde que les 5 dernières : la place est comptée sur l'hébergement.
         anciennes = sorted(f for f in os.listdir(dossier) if f.startswith('avant-migration-'))
         for vieille in anciennes[:-5]:
@@ -58,7 +61,8 @@ def _sauvegarder_avant_migration(app):
                 os.remove(os.path.join(dossier, vieille))
             except OSError:
                 pass
-        _log.info('Base sauvegardée avant migration : %s', os.path.basename(cible))
+        _log.info('Base sauvegardée avant migration (%s) : %s',
+                  os.path.basename(cible), message)
         return cible
     except Exception:
         return None

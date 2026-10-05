@@ -6,6 +6,7 @@ instance/github_backup.json (dossier instance ignoré par Git : jamais exposé).
 import json
 import os
 import base64
+import logging
 import shutil
 import sqlite3
 import tempfile
@@ -13,6 +14,8 @@ from datetime import datetime
 
 import requests
 from flask import Blueprint, request, jsonify, current_app
+
+_log = logging.getLogger('tumika.backup')
 
 from app.routes.auth import permission_required
 
@@ -86,20 +89,16 @@ def _build_snapshot():
         raise RuntimeError('Fichier de base de données introuvable sur le disque.')
     tmpdir = tempfile.mkdtemp(prefix='tumika_bkp_')
     snapshot = os.path.join(tmpdir, 'motostock.db')
-    try:
-        src = sqlite3.connect(db_path)
-        dst = sqlite3.connect(snapshot)
-        try:
-            with dst:
-                src.backup(dst)
-        except Exception:
-            # Base momentanément verrouillée : copie brute acceptable
-            shutil.copyfile(db_path, snapshot)
-        finally:
-            dst.close()
-            src.close()
-    except Exception:
-        shutil.copyfile(db_path, snapshot)
+    # En mode WAL, une simple copie du fichier perdrait les dernières saisies
+    # (elles sont encore dans « motostock.db-wal ») : la copie passe par
+    # l'API de sauvegarde, avec des replis sûrs si la base est occupée.
+    from app.utils.sauvegarde_sqlite import copie_sqlite_consistante
+    methode, message = copie_sqlite_consistante(db_path, snapshot)
+    if methode == 'echec':
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        raise RuntimeError('Copie de la base impossible : %s' % message)
+    if methode != 'api':
+        _log.warning('Sauvegarde de la base (%s) : %s', methode, message)
     return snapshot, tmpdir
 
 
