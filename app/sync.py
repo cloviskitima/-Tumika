@@ -392,11 +392,14 @@ def _appliquer_fichier_sans_verrou(file_path, app=None):
     os.close(fd)
     try:
         # 1) Fusion : copie de la base actuelle + application des lignes du fichier
+        from app.utils.sauvegarde_sqlite import copie_sqlite_consistante
         if os.path.exists(live):
             _copy_sqlite(live, merged_path)
             _apply_delta(file_path, merged_path)
         else:
-            shutil.copyfile(file_path, merged_path)
+            methode, message = copie_sqlite_consistante(file_path, merged_path)
+            if methode == 'echec':
+                raise RuntimeError('fichier_invalide')
 
         # 2) Validation avant toute écriture
         if not _validate(merged_path):
@@ -410,10 +413,16 @@ def _appliquer_fichier_sans_verrou(file_path, app=None):
         except Exception:
             pass
 
-        # 4) Réserve de sécurité : copie de la base actuelle telle quelle
+        # 4) Réserve de sécurité : la base actuelle telle quelle.
+        #    Copie fiable obligatoire : en mode WAL, une copie brute du fichier
+        #    principal ignore les dernières transactions (encore dans le -wal),
+        #    et cette réserve servirait alors à restaurer une base incomplète.
         if os.path.exists(live):
             try:
-                shutil.copyfile(live, live + '.pre-sync')
+                methode, message = copie_sqlite_consistante(live, live + '.pre-sync')
+                if methode != 'api':
+                    logger.warning('Réserve avant synchronisation (%s) : %s',
+                                   methode, message)
             except OSError:
                 pass
 
