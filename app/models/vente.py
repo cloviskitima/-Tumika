@@ -18,6 +18,11 @@ class Vente(db.Model):
     date = db.Column(db.DateTime, default=datetime.utcnow)
     date_echeance = db.Column(db.DateTime, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    # Réductions accordées lors de la vente (0 = aucune réduction)
+    remise_globale = db.Column(db.Float, default=0.0, nullable=True)
+    remise_type = db.Column(db.String(10), default='montant')  # 'montant' | 'pourcentage'
+    remise_articles = db.Column(db.Float, default=0.0, nullable=True)
+    motif_remise = db.Column(db.String(255), nullable=True)
     
     # Relation avec les produits vendus
     produits_vendus = db.relationship('ProduitVendu', backref='vente', lazy=True, cascade='all, delete-orphan')
@@ -36,6 +41,12 @@ class Vente(db.Model):
             'date_echeance': self.date_echeance.isoformat() if self.date_echeance else None,
             'produits_count': len(self.produits_vendus),
             'est_credit': self.mode_paiement == 'credit' or self.statut == 'pending',
+            'remise_globale': round(self.remise_globale or 0.0, 2),
+            'remise_type': self.remise_type or 'montant',
+            'remise_articles': round(self.remise_articles or 0.0, 2),
+            'motif_remise': self.motif_remise or '',
+            'remise_totale': round((self.remise_globale or 0.0) + (self.remise_articles or 0.0), 2),
+            'a_reduction': bool((self.remise_globale or 0) or (self.remise_articles or 0)),
             'produits': [pv.to_dict() for pv in self.produits_vendus]
         }
 
@@ -48,9 +59,15 @@ class ProduitVendu(db.Model):
     quantite = db.Column(db.Integer, nullable=False)
     prix_vente = db.Column(db.Float, nullable=False)
     prix_achat = db.Column(db.Float, nullable=True)
+    remise = db.Column(db.Float, default=0.0, nullable=True)  # réduction accordée sur cette ligne
     
     # Relation avec le produit
     produit = db.relationship('Produit', backref='produits_vendus')
+    
+    @property
+    def montant_ligne(self):
+        """Montant de la ligne après réduction."""
+        return max(0.0, (self.prix_vente * self.quantite) - (self.remise or 0.0))
     
     def to_dict(self):
         return {
@@ -60,5 +77,7 @@ class ProduitVendu(db.Model):
             'reference': self.produit.reference if self.produit else '',
             'quantite': self.quantite,
             'prix_vente': self.prix_vente,
-            'prix_achat': self.prix_achat
+            'prix_achat': self.prix_achat,
+            'remise': round(self.remise or 0.0, 2),
+            'montant_ligne': round(self.montant_ligne, 2)
         }

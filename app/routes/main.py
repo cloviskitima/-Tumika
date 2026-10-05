@@ -1,7 +1,7 @@
 """
 Routes principales de l'application
 """
-from flask import Blueprint, jsonify, render_template, session
+from flask import Blueprint, jsonify, render_template, request, session
 from app.routes.auth import login_required, permission_required
 
 main_bp = Blueprint('main', __name__)
@@ -82,3 +82,68 @@ def users():
 def settings():
     """Page des paramètres"""
     return render_template('settings.html')
+
+
+# =========================================================================
+# MISE À JOUR DE L'APPLICATION (Paramètres → Mise à jour)
+# =========================================================================
+
+@main_bp.route('/settings/api/update/info')
+@login_required
+def update_info_api():
+    """État actuel : dossier, écriture, nombre de fichiers, redémarrage auto."""
+    from app.utils import self_update
+    return jsonify({'status': 'success', **self_update.update_info()})
+
+
+@main_bp.route('/settings/api/update/analyze', methods=['POST'])
+@login_required
+def update_analyze_api():
+    """Analyse une liste {path, size} et renvoie nouveau/modifié/identique/ignoré."""
+    from app.utils import self_update
+    data = request.get_json(silent=True) or {}
+    files = data.get('files') or []
+    try:
+        result = self_update.analyze_update(files)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    result['status'] = 'success'
+    return jsonify(result)
+
+
+@main_bp.route('/settings/api/update/apply', methods=['POST'])
+@login_required
+def update_apply_api():
+    """Applique les fichiers reçus (multipart) en les remplaçant EN PLACE."""
+    from app.utils import self_update
+    files = []
+    try:
+        for key in request.files.keys():
+            f = request.files[key]
+            files.append((f.filename or '', f))
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
+    if not files:
+        return jsonify({'status': 'error', 'message': 'Aucun fichier reçu.'}), 400
+    result = self_update.apply_update(files)
+    result['status'] = 'success'
+    message = f"{len(result['applied'])} fichier(s) mis à jour en place."
+    if result['ignored']:
+        message += f" ({len(result['ignored'])} ignoré(s))"
+    result['message'] = message
+    return jsonify(result)
+
+
+@main_bp.route('/settings/api/update/restart', methods=['POST'])
+@login_required
+def update_restart_api():
+    """Demande le redémarrage de l'application pour appliquer la mise à jour."""
+    from app.utils import self_update
+    ok = self_update.schedule_restart()
+    if ok:
+        message = ("Mise à jour enregistrée. L'application redémarre "
+                   "automatiquement dans quelques secondes…")
+    else:
+        message = ("Mise à jour enregistrée. Fermez puis relancez l'application "
+                   "pour l'appliquer (redémarrage automatique indisponible ici).")
+    return jsonify({'status': 'success', 'restart': ok, 'message': message})

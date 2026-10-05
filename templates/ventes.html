@@ -107,6 +107,170 @@
         padding-bottom: 24px;
         margin-bottom: 24px;
     }
+
+    /* ===== Tableau des ventes : détail au survol / clic ===== */
+    .cell-link {
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 100%;
+    }
+    .cell-link:hover .cell-link-txt {
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+    .cell-link-txt {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 190px;
+    }
+    .arts-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+        border-radius: 999px;
+        padding: 4px 11px;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+    .cell-link:hover .arts-badge {
+        background: #dbeafe;
+        border-color: #93c5fd;
+    }
+    .arts-preview {
+        font-size: 0.78rem;
+        color: var(--gray-500);
+        margin-top: 3px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 200px;
+    }
+    .mini-pop {
+        position: fixed;
+        z-index: 1090;
+        min-width: 260px;
+        max-width: 340px;
+        background: #ffffff;
+        border: 1px solid var(--gray-200);
+        border-radius: 12px;
+        box-shadow: 0 18px 40px -12px rgba(15, 23, 42, 0.28);
+        padding: 12px 14px;
+        font-size: 0.85rem;
+        color: var(--gray-700);
+        pointer-events: none;
+        opacity: 0;
+        transform: translateY(6px);
+        transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    .mini-pop.show {
+        opacity: 1;
+        transform: none;
+    }
+    .mini-pop h6 {
+        margin: 0 0 8px;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--gray-500);
+        font-weight: 700;
+    }
+    .mini-pop ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        max-height: 220px;
+        overflow: auto;
+    }
+    .mini-pop li {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 4px 0;
+        border-bottom: 1px dashed var(--gray-200);
+    }
+    .mini-pop li:last-child {
+        border-bottom: none;
+    }
+    .mini-pop .mp-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .mini-pop .mp-val {
+        font-weight: 700;
+        color: var(--gray-900);
+        white-space: nowrap;
+    }
+    .row-detail > td {
+        background: #f8fafc;
+        padding: 0 !important;
+        border-top: 1px solid var(--gray-200);
+    }
+    .row-detail-box {
+        padding: 14px 20px 16px;
+        animation: rowIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes rowIn {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: none; }
+    }
+    .rd-title {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--gray-500);
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+    .rd-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 8px;
+    }
+    .rd-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #ffffff;
+        border: 1px solid var(--gray-200);
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-size: 0.85rem;
+    }
+    .rd-item .rd-qty {
+        font-weight: 800;
+        color: #1d4ed8;
+        background: #eff6ff;
+        border-radius: 8px;
+        padding: 2px 8px;
+        font-size: 0.78rem;
+    }
+    .rd-item .rd-name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .rd-item .rd-total {
+        font-weight: 700;
+        color: #047857;
+        white-space: nowrap;
+    }
+    .rd-client {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 18px;
+        font-size: 0.88rem;
+    }
+    .rd-client b {
+        color: var(--gray-900);
+    }
 </style>
 
 <!-- Banner Hero Ventes -->
@@ -240,11 +404,15 @@
             <div id="paginationSummary" style="color: var(--gray-500); font-size: 0.88rem;">
                 Affichage 0-0 sur 0 résultats
             </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <select id="pageSizeSelect" class="form-select form-select-sm" style="width: 80px; border-radius: 8px;" onchange="currentPage=1; renderSalesTable(salesData)">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <label for="pageSizeSelect" style="color: var(--gray-500); font-size: 0.85rem; font-weight: 600;">Lignes :</label>
+                <select id="pageSizeSelect" class="form-select form-select-sm" style="width: 96px; border-radius: 8px;" onchange="changerPageSize(this.value)">
                     <option value="10">10</option>
-                    <option value="25">25</option>
+                    <option value="20">20</option>
                     <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="250">250</option>
+                    <option value="all">Tout</option>
                 </select>
                 <button id="prevPageBtn" class="btn btn-sm btn-outline-secondary" onclick="currentPage--; renderSalesTable(salesData)" disabled>← Précédent</button>
                 <button id="currentPageBtn" class="btn btn-sm btn-primary" disabled>1</button>
@@ -393,10 +561,67 @@
                 </div>
 
                 <!-- Articles du Panier -->
-                <div id="cartItems" style="flex: 1; max-height: 240px; overflow-y: auto; margin-bottom: 16px;">
+                <div id="cartItems" style="flex: 1; max-height: 240px; overflow-y: auto; margin-bottom: 10px;">
                     <div style="padding: 24px; text-align: center; color: var(--gray-500);">
                         <i class="bi bi-cart" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i>
                         <p style="margin: 0; font-size: 0.88rem;">Le panier est actuellement vide.</p>
+                    </div>
+                </div>
+
+                <!-- ===== RÉDUCTIONS : panneau déroulant ===== -->
+                <div id="remisePanel" style="border: 1px solid #fcd34d; background: #fffbeb; border-radius: 12px; margin-bottom: 12px; overflow: hidden;">
+                    <button type="button" id="remiseToggle" onclick="basculerPanneauRemise()"
+                        style="width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 14px; background: transparent; border: none; cursor: pointer; text-align: left;">
+                        <span style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.88rem; color: #92400e;">
+                            <i class="bi bi-percent-circle-fill" style="font-size: 1.05rem;"></i>
+                            Réductions
+                            <span id="remiseBadge" style="display: none; background: #f59e0b; color: white; border-radius: 20px; padding: 2px 9px; font-size: 0.72rem; font-weight: 800;"></span>
+                        </span>
+                        <i class="bi bi-chevron-down" id="remiseChevron" style="transition: transform 0.25s ease; color: #b45309;"></i>
+                    </button>
+
+                    <div id="remiseBody" style="display: none; padding: 4px 14px 14px; border-top: 1px dashed #fcd34d;">
+
+                        <!-- Réduction par article -->
+                        <div style="margin-top: 12px;">
+                            <div style="font-size: 0.76rem; font-weight: 800; color: #92400e; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px;">
+                                <i class="bi bi-list-ul me-1"></i> Par article
+                            </div>
+                            <div id="remiseLignes" style="display: flex; flex-direction: column; gap: 6px;">
+                                <div style="font-size: 0.8rem; color: #a16207;">Ajoutez des articles au panier pour leur accorder une réduction.</div>
+                            </div>
+                        </div>
+
+                        <!-- Réduction globale -->
+                        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #fcd34d;">
+                            <div style="font-size: 0.76rem; font-weight: 800; color: #92400e; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px;">
+                                <i class="bi bi-tag-fill me-1"></i> Réduction globale
+                            </div>
+
+                            <div style="display: flex; gap: 6px; align-items: center; margin-bottom: 8px;">
+                                <div style="display: flex; background: white; border: 1px solid #fcd34d; border-radius: 8px; overflow: hidden;">
+                                    <button type="button" id="remiseTypeMontant" onclick="setRemiseType('montant')" style="border: none; padding: 6px 12px; font-size: 0.78rem; font-weight: 700; cursor: pointer; background: #92400e; color: white;">Montant</button>
+                                    <button type="button" id="remiseTypePourcentage" onclick="setRemiseType('pourcentage')" style="border: none; padding: 6px 12px; font-size: 0.78rem; font-weight: 700; cursor: pointer; background: white; color: #92400e;">%</button>
+                                </div>
+                                <input type="number" id="remiseGlobaleValeur" min="0" step="0.01" placeholder="0" oninput="updateCartSummary()"
+                                    style="flex: 1; padding: 7px 10px; border: 1px solid #fcd34d; border-radius: 8px; font-weight: 800; color: #92400e; background: white;">
+                            </div>
+
+                            <div id="remiseRaccourcis" style="display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px;">
+                                <button type="button" onclick="appliquerRaccourciRemise(5)" class="btn btn-sm" style="border-radius: 7px; font-size: 0.72rem; font-weight: 700; background: white; color: #92400e; border: 1px solid #fcd34d;">-5%</button>
+                                <button type="button" onclick="appliquerRaccourciRemise(10)" class="btn btn-sm" style="border-radius: 7px; font-size: 0.72rem; font-weight: 700; background: white; color: #92400e; border: 1px solid #fcd34d;">-10%</button>
+                                <button type="button" onclick="appliquerRaccourciRemise(15)" class="btn btn-sm" style="border-radius: 7px; font-size: 0.72rem; font-weight: 700; background: white; color: #92400e; border: 1px solid #fcd34d;">-15%</button>
+                                <button type="button" onclick="appliquerRaccourciRemise(20)" class="btn btn-sm" style="border-radius: 7px; font-size: 0.72rem; font-weight: 700; background: white; color: #92400e; border: 1px solid #fcd34d;">-20%</button>
+                                <button type="button" onclick="appliquerRaccourciRemise(50)" class="btn btn-sm" style="border-radius: 7px; font-size: 0.72rem; font-weight: 700; background: white; color: #92400e; border: 1px solid #fcd34d;">-50%</button>
+                            </div>
+
+                            <input type="text" id="remiseMotif" maxlength="255" placeholder="Motif de la réduction (ex: client fidèle, reprise…)" oninput="updateCartSummary()"
+                                style="width: 100%; padding: 7px 10px; border: 1px solid #fcd34d; border-radius: 8px; font-size: 0.82rem; background: white;">
+
+                            <button type="button" onclick="toutEffacerRemises()" style="margin-top: 8px; background: none; border: none; color: #b91c1c; font-size: 0.78rem; font-weight: 700; cursor: pointer; text-decoration: underline;">
+                                <i class="bi bi-x-circle me-1"></i>Effacer toutes les réductions
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -423,8 +648,20 @@
                         <span id="subtotal">0 FC</span>
                     </div>
 
+                    <div id="ligneRemiseArticles" style="display: none; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 2px; color: #fcd34d;">
+                        <span><i class="bi bi-percent me-1"></i>Réduction articles:</span>
+                        <span id="remiseArticlesDisplay">0</span>
+                    </div>
+
+                    <div id="ligneRemiseGlobale" style="display: none; justify-content: space-between; align-items: center; font-size: 0.8rem; margin-bottom: 2px; color: #fcd34d;">
+                        <span><i class="bi bi-tag me-1"></i>Réduction globale:</span>
+                        <span id="remiseGlobaleDisplay">0</span>
+                    </div>
+
+                    <div id="ligneMotif" style="display: none; font-size: 0.74rem; color: #fde68a; margin-bottom: 4px; font-style: italic;"></div>
+
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; font-weight: 800; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);">
-                        <span>TOTAL:</span>
+                        <span>TOTAL À PAYER:</span>
                         <span id="total" style="color: #6ee7b7;">0 FC</span>
                     </div>
                 </div>
@@ -509,7 +746,10 @@
 <script>
 let salesData = [];
 let currentPage = 1;
-let pageSize = 10;
+// 'all' = afficher toutes les lignes d'un coup
+let pageSize = chargerPageSize();
+let venteDetailsOuverts = {};
+let popoverVente = null;
 let cart = [];
 let editSaleId = null;
 let editCart = [];
@@ -634,12 +874,36 @@ async function loadSalesStatistics() {
 }
 
 // 3. Affichage de la Table des Ventes
+const PAGE_SIZE_KEY = 'tumika_pageSize_ventes';
+const PAGE_SIZE_VALEURS = ['10', '20', '50', '100', '250', 'all'];
+
+function chargerPageSize() {
+    try {
+        const v = localStorage.getItem(PAGE_SIZE_KEY);
+        if (v && PAGE_SIZE_VALEURS.indexOf(v) !== -1) return v;
+    } catch (e) { /* localStorage indisponible */ }
+    return '10';
+}
+
+function changerPageSize(valeur) {
+    pageSize = (valeur === 'all') ? 'all' : (parseInt(valeur, 10) || 10);
+    try { localStorage.setItem(PAGE_SIZE_KEY, String(pageSize)); } catch (e) { /* ignoré */ }
+    currentPage = 1;
+    renderSalesTable(salesData);
+}
+
+function synchroniserSelecteurPageSize() {
+    const sel = document.getElementById('pageSizeSelect');
+    if (sel) sel.value = String(pageSize);
+}
+
 function renderSalesTable(sales) {
     const tbody = document.getElementById('salesTableBody');
     const summary = document.getElementById('paginationSummary');
     const currentPageBtn = document.getElementById('currentPageBtn');
     const prevPageBtn = document.getElementById('prevPageBtn');
     const nextPageBtn = document.getElementById('nextPageBtn');
+    synchroniserSelecteurPageSize();
 
     if (sales.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--gray-500); padding: 40px;"><i class="bi bi-cart3" style="font-size: 2.2rem; margin-bottom: 12px; display: block;"></i><p style="margin: 0;">Aucune vente enregistrée</p></td></tr>';
@@ -651,7 +915,7 @@ function renderSalesTable(sales) {
     }
 
     const totalItems = sales.length;
-    const itemsPerPage = Number.isFinite(pageSize) ? pageSize : totalItems;
+    const itemsPerPage = (pageSize === 'all') ? totalItems : (Number.isFinite(Number(pageSize)) ? Number(pageSize) : 10);
     const maxPage = Math.max(1, Math.ceil(totalItems / itemsPerPage));
     if (currentPage > maxPage) currentPage = maxPage;
 
@@ -659,8 +923,10 @@ function renderSalesTable(sales) {
     const end = Math.min(start + itemsPerPage, totalItems);
     const currentPageItems = sales.slice(start, end);
 
-    summary.textContent = `Affichage ${start + 1}-${end} sur ${totalItems} résultats`;
-    currentPageBtn.textContent = currentPage;
+    summary.textContent = `Affichage ${start + 1}-${end} sur ${totalItems} résultats`
+        + (pageSize === 'all' ? ' (tout affiché)' : ` — page ${currentPage}/${maxPage}`);
+    currentPageBtn.textContent = (pageSize === 'all') ? 'Tout' : currentPage;
+    currentPageBtn.disabled = (pageSize === 'all');
     prevPageBtn.disabled = currentPage <= 1;
     nextPageBtn.disabled = currentPage >= maxPage;
 
@@ -674,13 +940,47 @@ function renderSalesTable(sales) {
                 ${pendingCreditPaymentConfirm[sale.id] ? 'Confirmer le paiement' : '<i class="bi bi-cash-coin"></i> Payer Crédit'}
             </button>` : '';
 
+        const produits = sale.produits || [];
+        const firstNames = produits.slice(0, 2).map(p => p.nom).join(', ');
+        const extra = produits.length > 2 ? ` +${produits.length - 2} autre(s)` : '';
+        const clientName = sale.client || 'Client comptant';
+        const estComptant = !sale.client;
+
+        // Montant brut recalculé depuis les lignes, uniquement pour l'affichage
+        const brutLignes = produits.reduce((acc, p) => acc + (p.quantite * p.prix_vente), 0);
+        const afficheBrut = sale.a_reduction && (brutLignes - (sale.remise_totale || 0) - sale.montant) < 0.01;
+
         return `
             <tr>
                 <td style="padding: 14px 20px; font-weight: 800; color: var(--dark-blue);">#${sale.id}</td>
                 <td><span style="font-size: 0.88rem; color: var(--gray-700);">${formatDate(sale.date)}</span></td>
-                <td><strong style="color: var(--gray-900);">${escapeHtml(sale.client || 'Client comptant')}</strong></td>
-                <td><span class="badge bg-light text-dark border">${sale.produits_count || 0} article(s)</span></td>
-                <td><strong style="color: #047857; font-size: 1rem;">${amountDisplay}</strong></td>
+                <td>
+                    <span class="cell-link" onclick="basculerDetailVente(${sale.id}, this)"
+                          onmouseenter="afficherPopoverVente(event, ${sale.id})"
+                          onmouseleave="masquerPopoverVente()"
+                          title="Cliquez pour voir les détails du client">
+                        <i class="bi ${estComptant ? 'bi-person' : 'bi-person-circle'}"></i>
+                        <strong class="cell-link-txt" style="color: var(--gray-900);">${escapeHtml(clientName)}</strong>
+                    </span>
+                </td>
+                <td>
+                    <span class="cell-link" onclick="basculerDetailVente(${sale.id}, this)"
+                          onmouseenter="afficherPopoverVente(event, ${sale.id})"
+                          onmouseleave="masquerPopoverVente()"
+                          title="Cliquez pour voir toutes les marchandises vendues">
+                        <span class="arts-badge"><i class="bi bi-box-seam"></i> ${produits.length} article(s)</span>
+                    </span>
+                    ${produits.length ? `<div class="arts-preview">${escapeHtml(firstNames)}${escapeHtml(extra)}</div>` : ''}
+                </td>
+                <td>
+                    ${sale.a_reduction ? `<div style="display:flex; flex-direction:column; align-items:flex-start; line-height:1.3;">
+                            ${afficheBrut ? `<span style="font-size: 0.72rem; color: var(--gray-400); text-decoration: line-through;">${isUSD ? '$ ' + brutLignes.toFixed(2) : formatCurrency(brutLignes, 'CDF')}</span>` : ''}
+                            <strong style="color: #047857; font-size: 1rem;">${amountDisplay}</strong>
+                            <span title="Réduction appliquée sur cette vente" style="font-size: 0.7rem; font-weight: 800; color: #b45309; background: #fef3c7; border-radius: 6px; padding: 1px 6px;">
+                                <i class="bi bi-percent"></i> -${formatRemiseCourte(sale.remise_totale, sale.devise)}
+                            </span>
+                        </div>` : `<strong style="color: #047857; font-size: 1rem;">${amountDisplay}</strong>`}
+                </td>
                 <td>
                     <span style="padding: 5px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; ${getStatusStyle(status)}">
                         ${getStatusLabel(status)}
@@ -695,8 +995,153 @@ function renderSalesTable(sales) {
                     </div>
                 </td>
             </tr>
+            <tr class="row-detail" id="detailVente${sale.id}" style="display: none;">
+                <td colspan="7"><div class="row-detail-box" id="detailBox${sale.id}"></div></td>
+            </tr>
         `;
     }).join('');
+
+    // Rouvre les lignes de détail encore visibles (après changement de page)
+    Object.keys(venteDetailsOuverts).forEach(id => {
+        if (venteDetailsOuverts[id]) {
+            const tr = document.getElementById('detailVente' + id);
+            if (tr) { construireDetailVente(parseInt(id, 10), tr); }
+        }
+    });
+}
+
+function formatRemiseCourte(valeur, devise) {
+    if (devise === 'USD') return '$ ' + Number(valeur || 0).toFixed(2);
+    return formatCurrency(valeur || 0, 'CDF');
+}
+
+function trouverVente(id) {
+    return (salesData || []).find(s => s.id === id);
+}
+
+function etiquettePaiement(sale) {
+    if (sale.mode_paiement === 'credit' || sale.statut === 'pending') {
+        return '<i class="bi bi-clock-history"></i> Crédit (non encaissé)';
+    }
+    if (!sale.client) {
+        return '<i class="bi bi-cash-coin"></i> Payé comptant';
+    }
+    return '<i class="bi bi-cash-stack"></i> Payé comptant';
+}
+
+function construireDetailVente(id, tr) {
+    const sale = trouverVente(id);
+    const box = document.getElementById('detailBox' + id);
+    if (!sale || !box) return;
+    const isUSD = (sale.devise === 'USD');
+    const produits = sale.produits || [];
+    const fmt = (v) => isUSD ? '$ ' + Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : formatCurrency(v);
+
+    const itemsHtml = produits.length
+        ? produits.map(p => {
+            const brut = p.quantite * p.prix_vente;
+            const ligne = Math.max(0, brut - (p.remise || 0));
+            const ligneDisplay = fmt(ligne);
+            const badgeRemise = (p.remise || 0) > 0.004
+                ? `<span style="font-size:0.7rem; font-weight:800; color:#b45309; background:#fef3c7; border-radius:6px; padding:1px 6px; white-space:nowrap;">- ${fmt(p.remise)}</span>`
+                : '';
+            return `<div class="rd-item">
+                        <span class="rd-qty">×${p.quantite}</span>
+                        <span class="rd-name" title="${escapeHtml(p.nom)}">${escapeHtml(p.nom)}</span>
+                        ${badgeRemise}
+                        <span class="rd-total">${ligneDisplay}</span>
+                    </div>`;
+        }).join('')
+        : '<div class="rd-item"><span class="rd-name">Aucune marchandise enregistrée.</span></div>';
+
+    const reducHtml = sale.a_reduction ? `
+        <div class="rd-title"><i class="bi bi-percent-circle-fill"></i> Réductions appliquées</div>
+        <div class="rd-client" style="margin-bottom: 16px;">
+            <span>Réduction articles : <b style="color:#b45309;">- ${fmt(sale.remise_articles)}</b></span>
+            <span>Réduction globale${sale.remise_type === 'pourcentage' ? ' (%)' : ''} : <b style="color:#b45309;">- ${fmt(sale.remise_globale)}</b></span>
+            <span>Total reductions : <b style="color:#b45309;">- ${fmt(sale.remise_totale)}</b></span>
+            ${sale.motif_remise ? `<span>Motif : <b>${escapeHtml(sale.motif_remise)}</b></span>` : ''}
+        </div>` : '';
+
+    box.innerHTML = `
+        <div class="rd-title"><i class="bi bi-person-circle"></i> Client</div>
+        <div class="rd-client" style="margin-bottom: 16px;">
+            <span>Nom : <b>${escapeHtml(sale.client || 'Client comptant')}</b></span>
+            <span>${sale.client ? '' : ' (vente sans nom renseigné)'}</span>
+            <span>Téléphone : <b>${escapeHtml(sale.telephone || '—')}</b></span>
+            <span>Paiement : <b>${etiquettePaiement(sale)}</b></span>
+            <span>Montant : <b>${fmt(sale.montant)}</b></span>
+        </div>
+        ${reducHtml}
+        <div class="rd-title"><i class="bi bi-box-seam"></i> Marchandises vendues (${produits.length})</div>
+        <div class="rd-grid">${itemsHtml}</div>`;
+}
+
+function basculerDetailVente(id, elm) {
+    const tr = document.getElementById('detailVente' + id);
+    if (!tr) return;
+    const ouvert = tr.style.display === 'table-row' || venteDetailsOuverts[id];
+    venteDetailsOuverts[id] = !ouvert;
+    if (ouvert) {
+        tr.style.display = 'none';
+    } else {
+        construireDetailVente(id, tr);
+        tr.style.display = 'table-row';
+    }
+}
+
+function afficherPopoverVente(event, id) {
+    const sale = trouverVente(id);
+    if (!sale) return;
+    if (!popoverVente) {
+        popoverVente = document.createElement('div');
+        popoverVente.className = 'mini-pop';
+        document.body.appendChild(popoverVente);
+    }
+    const isUSD = (sale.devise === 'USD');
+    const fmt = (v) => isUSD ? '$ ' + Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : formatCurrency(v);
+    const produits = sale.produits || [];
+    const lignes = produits.map(p => {
+        const brut = p.quantite * p.prix_vente;
+        const net = Math.max(0, brut - (p.remise || 0));
+        const tag = (p.remise || 0) > 0.004
+            ? ` <span style="color:#b45309; font-weight:700; font-size:0.75rem;">(- ${fmt(p.remise)})</span>`
+            : '';
+        return `<li>
+                    <span class="mp-name">${escapeHtml(p.nom)} <span style="color:var(--gray-400)">×${p.quantite}</span>${tag}</span>
+                    <span class="mp-val">${fmt(net)}</span>
+                </li>`;
+    }).join('') || '<li><span class="mp-name">Aucune marchandise</span></li>';
+
+    const reducHtml = sale.a_reduction ? `
+        <h6>Réductions appliquées</h6>
+        <div style="margin-bottom: 8px; color: #b45309; font-weight: 700; font-size: 0.82rem;">
+            - ${fmt(sale.remise_totale)} au total${sale.motif_remise ? ` · « ${escapeHtml(sale.motif_remise)} »` : ''}
+        </div>` : '';
+
+    popoverVente.innerHTML = `<h6>Client</h6>
+        <div style="margin-bottom:8px;">
+            <b>${escapeHtml(sale.client || 'Client comptant')}</b><br>
+            <span style="font-size:0.82rem; color:var(--gray-500);">${sale.client ? 'Client enregistré' : 'Vente comptant (aucun nom saisi)'} · ${etiquettePaiement(sale)}</span>
+        </div>
+        ${reducHtml}
+        <h6>Marchandises vendues (${produits.length})</h6>
+        <ul>${lignes}</ul>`;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    popoverVente.classList.add('show');
+    const w = popoverVente.offsetWidth;
+    const h = popoverVente.offsetHeight;
+    let left = rect.left;
+    let top = rect.bottom + 8;
+    if (left + w > window.innerWidth - 12) left = window.innerWidth - w - 12;
+    if (top + h > window.innerHeight - 12) top = Math.max(12, rect.top - h - 8);
+    popoverVente.style.left = Math.max(12, left) + 'px';
+    popoverVente.style.top = top + 'px';
+}
+
+function masquerPopoverVente() {
+    if (popoverVente) popoverVente.classList.remove('show');
 }
 
 function getStatusStyle(status) {
@@ -833,6 +1278,7 @@ function updateCartDisplay() {
 
     if (cart.length === 0) {
         container.innerHTML = '<div style="padding: 24px; text-align: center; color: var(--gray-500);"><i class="bi bi-cart" style="font-size: 2rem; display: block; margin-bottom: 8px;"></i><p style="margin: 0; font-size: 0.88rem;">Le panier est actuellement vide.</p></div>';
+        rendrePanneauRemiseLignes();
         updateCartSummary();
         return;
     }
@@ -840,12 +1286,18 @@ function updateCartDisplay() {
     container.innerHTML = cart.map((item, index) => {
         const itemDevise = item.devise === 'USD' ? 'USD' : 'CDF';
         const priceDisplay = (itemDevise === 'USD') ? `$ ${item.prix}` : `${formatCurrency(item.prix, 'CDF')}`;
+        const remiseLigne = getRemiseLigneValeur(item, index);
+        const netLigne = Math.max(0, item.prix * item.quantite - remiseLigne);
+        const netDisplay = (itemDevise === 'USD') ? `$ ${netLigne.toFixed(2)}` : formatCurrency(netLigne, 'CDF');
 
         return `
             <div class="cart-card-item">
                 <div style="flex: 1;">
                     <div style="font-weight: 700; font-size: 0.9rem; color: var(--gray-900);">${escapeHtml(item.nom)}</div>
                     <div style="font-size: 0.8rem; color: var(--gray-500);">${priceDisplay} / unité</div>
+                    ${remiseLigne > 0.004 ? `<div style="font-size: 0.74rem; font-weight: 700; color: #b45309; margin-top: 2px;">
+                        <i class="bi bi-percent"></i> remise article : net ${netDisplay}
+                    </div>` : ''}
                 </div>
                 <div style="display: flex; align-items: center; gap: 6px;">
                     <button class="btn-qty-step" onclick="updateCartQuantity(${index}, -1)">-</button>
@@ -857,6 +1309,7 @@ function updateCartDisplay() {
         `;
     }).join('');
 
+    rendrePanneauRemiseLignes();
     updateCartSummary();
 }
 
@@ -896,6 +1349,165 @@ function removeFromCart(index) {
     updateCartDisplay();
 }
 
+// ================= RÉDUCTIONS MANUELLES =================
+// remisesLigne : { indexPanier: {type:'pourcentage'|'montant', valeur:Number} }
+let remisesLigne = {};
+let remiseGlobaleType = 'montant';
+
+function basculerPanneauRemise() {
+    const body = document.getElementById('remiseBody');
+    const chevron = document.getElementById('remiseChevron');
+    if (!body) return;
+    const ouvert = body.style.display === 'block';
+    body.style.display = ouvert ? 'none' : 'block';
+    if (chevron) chevron.style.transform = ouvert ? '' : 'rotate(180deg)';
+    if (!ouvert) {
+        setTimeout(() => {
+            const premier = body.querySelector('input');
+            if (premier) premier.focus({ preventScroll: true });
+        }, 60);
+    }
+}
+
+function setRemiseType(type) {
+    remiseGlobaleType = type;
+    const btnM = document.getElementById('remiseTypeMontant');
+    const btnP = document.getElementById('remiseTypePourcentage');
+    const champ = document.getElementById('remiseGlobaleValeur');
+    if (btnM && btnP) {
+        const actif = { background: '#92400e', color: 'white' };
+        const inactif = { background: 'white', color: '#92400e' };
+        Object.assign(btnM.style, type === 'montant' ? actif : inactif);
+        Object.assign(btnP.style, type === 'pourcentage' ? actif : inactif);
+    }
+    if (champ) {
+        champ.placeholder = type === 'pourcentage' ? '0' : '0';
+        champ.step = type === 'pourcentage' ? '1' : '0.01';
+        // Reprise de la même valeur avec la nouvelle unité
+        const courante = parseFloat(champ.value) || 0;
+        champ.value = courante > 0 ? courante : '';
+    }
+    updateCartSummary();
+}
+
+function appliquerRaccourciRemise(pourcentage) {
+    ouvrirPanneauRemise();
+    setRemiseType('pourcentage');
+    const champ = document.getElementById('remiseGlobaleValeur');
+    if (champ) {
+        champ.value = pourcentage;
+        updateCartSummary();
+    }
+}
+
+function ouvrirPanneauRemise() {
+    const body = document.getElementById('remiseBody');
+    const chevron = document.getElementById('remiseChevron');
+    if (body && body.style.display !== 'block') {
+        body.style.display = 'block';
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    }
+}
+
+function definirRemiseLigne(index, type, valeur) {
+    const v = parseFloat(valeur);
+    if (isNaN(v) || v <= 0) {
+        delete remisesLigne[index];
+    } else {
+        remisesLigne[index] = { type: type, valeur: v };
+    }
+    updateCartSummary();
+    updateBadgeRemise();
+}
+
+function toutEffacerRemises() {
+    remisesLigne = {};
+    const champ = document.getElementById('remiseGlobaleValeur');
+    if (champ) champ.value = '';
+    const motif = document.getElementById('remiseMotif');
+    if (motif) motif.value = '';
+    updateCartDisplay();
+    if (typeof showToast === 'function') showToast('Réductions effacées', 'info');
+}
+
+function getRemiseLigneValeur(item, index) {
+    const r = remisesLigne[index];
+    if (!r) return 0;
+    const brut = item.prix * item.quantite;
+    if (r.type === 'pourcentage') return brut * Math.min(r.valeur, 100) / 100;
+    return Math.min(r.valeur, brut);
+}
+
+function getRemisesLignesTotales() {
+    let total = 0;
+    cart.forEach((item, index) => { total += getRemiseLigneValeur(item, index); });
+    return total;
+}
+
+function getRemiseGlobaleValeur(netApresArticles, sousTotal, deviseFacture, taux) {
+    const champ = document.getElementById('remiseGlobaleValeur');
+    const v = champ ? parseFloat(champ.value) : 0;
+    if (isNaN(v) || v <= 0) return 0;
+    if (remiseGlobaleType === 'pourcentage') return netApresArticles * Math.min(v, 100) / 100;
+    // Montant saisi : on l'interprète dans la devise de facturation
+    return Math.min(v, netApresArticles);
+}
+
+function updateBadgeRemise() {
+    const badge = document.getElementById('remiseBadge');
+    if (!badge) return;
+    const nbLignes = Object.keys(remisesLigne).length;
+    const champ = document.getElementById('remiseGlobaleValeur');
+    const globale = champ && parseFloat(champ.value) > 0 ? 1 : 0;
+    const total = nbLignes + globale;
+    if (total > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent = total;
+        if (nbLignes > 0 || globale > 0) ouvrirPanneauRemise();
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function rendreSelecteurRemiseLigne(item, index) {
+    const devise = item.devise === 'USD' ? 'USD' : 'CDF';
+    const suffixe = devise === 'USD' ? '$' : 'FC';
+    const r = remisesLigne[index];
+    const valeur = r ? r.valeur : '';
+    const type = r ? r.type : 'pourcentage';
+    const brut = item.prix * item.quantite;
+    return `<div class="rl-row" style="display:flex; align-items:center; gap:6px; background:white; border:1px solid #fcd34d; border-radius:9px; padding:6px 9px;">
+                <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.8rem; color:#1f2937; font-weight:600;" title="${escapeHtml(item.nom)}">${escapeHtml(item.nom)}</span>
+                <span style="font-size:0.72rem; color:#a16207; font-weight:700; white-space:nowrap;">max ${suffixe} ${brut.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}</span>
+                <select onchange="changerTypeRemiseLigne(${index}, this.value)" style="border:1px solid #fcd34d; border-radius:7px; padding:4px 6px; font-size:0.76rem; font-weight:700; color:#92400e; background:white;">
+                    <option value="pourcentage" ${type === 'pourcentage' ? 'selected' : ''}>%</option>
+                    <option value="montant" ${type === 'montant' ? 'selected' : ''}>${suffixe}</option>
+                </select>
+                <input type="number" min="0" step="${type === 'pourcentage' ? '1' : '0.01'}" value="${valeur}" placeholder="0"
+                    oninput="definirRemiseLigne(${index}, '${type}', this.value)"
+                    style="width:74px; border:1px solid #fcd34d; border-radius:7px; padding:4px 6px; font-size:0.78rem; font-weight:800; color:#92400e; text-align:right;">
+            </div>`;
+}
+
+function changerTypeRemiseLigne(index, type) {
+    const existant = remisesLigne[index];
+    if (existant) {
+        remisesLigne[index] = { type: type, valeur: existant.valeur };
+    }
+    updateCartDisplay();
+    updateCartSummary();
+}
+
+function rendrePanneauRemiseLignes() {
+    const box = document.getElementById('remiseLignes');
+    if (!box) return;
+    if (cart.length === 0) {
+        box.innerHTML = '<div style="font-size: 0.8rem; color: #a16207;">Ajoutez des articles au panier pour leur accorder une réduction.</div>';
+        return;
+    }
+    box.innerHTML = cart.map((item, index) => rendreSelecteurRemiseLigne(item, index)).join('');
+}
+
 function getSaleTotal() {
     const saleCurrency = document.getElementById('saleCurrency').value;
     const rate = getCurrentRate(); // taux paramétré (Réglages → Taux de change)
@@ -918,28 +1530,79 @@ function getSaleTotal() {
 
     const isUSD = (saleCurrency === 'USD');
     const subtotal = isUSD ? subtotalUSD : subtotalFC;
-    const total = subtotal;
 
-    return { subtotal, tax: 0, total, currency: saleCurrency };
+    // ── Réductions ──
+    const remiseArticles = getRemisesLignesTotales();
+    const netApresArticles = Math.max(0, subtotal - remiseArticles);
+    const remiseGlobale = getRemiseGlobaleValeur(netApresArticles, subtotal, saleCurrency, rate);
+    const total = Math.max(0, netApresArticles - remiseGlobale);
+
+    return {
+        subtotal,
+        tax: 0,
+        total,
+        currency: saleCurrency,
+        remise_articles: remiseArticles,
+        remise_globale: remiseGlobale,
+        remise_type: remiseGlobaleType
+    };
 }
 
 function updateCartSummary() {
     const totals = getSaleTotal();
     const isUSD = (totals.currency === 'USD');
+    const fmt = (v) => isUSD ? `$ ${Number(v).toFixed(2)}` : formatCurrency(v, 'CDF');
 
-    document.getElementById('subtotal').textContent = isUSD ? `$ ${totals.subtotal.toFixed(2)}` : `${formatCurrency(totals.subtotal, 'CDF')}`;
-    document.getElementById('total').textContent = isUSD ? `$ ${totals.total.toFixed(2)}` : `${formatCurrency(totals.total, 'CDF')}`;
+    document.getElementById('subtotal').textContent = fmt(totals.subtotal);
+
+    const rowArticles = document.getElementById('ligneRemiseArticles');
+    if (rowArticles) {
+        const visible = totals.remise_articles > 0.004;
+        rowArticles.style.display = visible ? 'flex' : 'none';
+        if (visible) document.getElementById('remiseArticlesDisplay').textContent = '- ' + fmt(totals.remise_articles);
+    }
+
+    const rowGlobale = document.getElementById('ligneRemiseGlobale');
+    if (rowGlobale) {
+        const visible = totals.remise_globale > 0.004;
+        rowGlobale.style.display = visible ? 'flex' : 'none';
+        if (visible) {
+            document.getElementById('remiseGlobaleDisplay').textContent =
+                '- ' + fmt(totals.remise_globale) + (totals.remise_type === 'pourcentage' ? ` (${document.getElementById('remiseGlobaleValeur').value}%)` : '');
+        }
+    }
+
+    const motifInput = document.getElementById('remiseMotif');
+    const rowMotif = document.getElementById('ligneMotif');
+    if (motifInput && rowMotif) {
+        const motif = motifInput.value.trim();
+        const aRemise = (totals.remise_articles + totals.remise_globale) > 0.004;
+        rowMotif.style.display = (motif && aRemise) ? 'block' : 'none';
+        rowMotif.textContent = motif ? `« ${motif} »` : '';
+    }
+
+    document.getElementById('total').textContent = fmt(totals.total);
 
     const row = document.getElementById('exchangeRateRow');
     if (row) row.style.display = '';
+    updateBadgeRemise();
     updateTauxBadge();
 }
 
 function openSaleModal() {
     cart = [];
+    remisesLigne = {};
+    remiseGlobaleType = 'montant';
     document.getElementById('customerName').value = '';
     document.getElementById('customerPhone').value = '';
     document.getElementById('productSearch').value = '';
+    const rg = document.getElementById('remiseGlobaleValeur');
+    if (rg) rg.value = '';
+    const rm = document.getElementById('remiseMotif');
+    if (rm) rm.value = '';
+    const badge = document.getElementById('remiseBadge');
+    if (badge) badge.style.display = 'none';
+    setRemiseType('montant');
     updateCartDisplay();
 
     const modal = document.getElementById('saleModal');
@@ -952,6 +1615,24 @@ function closeSaleModal() {
 }
 
 // 6. Enregistrer une Vente POS
+function construireRemisesParArticle() {
+    const out = {};
+    cart.forEach((item, index) => {
+        const r = remisesLigne[index];
+        if (r && r.valeur > 0) {
+            out[item.id] = { type: r.type, valeur: r.valeur };
+        }
+    });
+    return out;
+}
+
+function construireRemiseGlobale() {
+    const champ = document.getElementById('remiseGlobaleValeur');
+    const v = champ ? parseFloat(champ.value) : 0;
+    if (isNaN(v) || v <= 0) return { type: remiseGlobaleType, valeur: 0 };
+    return { type: remiseGlobaleType, valeur: v };
+}
+
 async function saveSale() {
     if (cart.length === 0) {
         if (typeof showToast === 'function') showToast('Le panier est vide !', 'warning');
@@ -959,6 +1640,10 @@ async function saveSale() {
     }
 
     const totals = getSaleTotal();
+    if (totals.total <= 0) {
+        if (typeof showToast === 'function') showToast('Le total est à 0 : vérifiez les réductions appliquées.', 'warning');
+        return;
+    }
     const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
     const dueDate = document.getElementById('paymentDueDate').value;
 
@@ -975,7 +1660,10 @@ async function saveSale() {
         mode_paiement: paymentMethod,
         date_echeance: paymentMethod === 'credit' ? dueDate : null,
         devise: totals.currency,
-        taux_change: getCurrentRate()
+        taux_change: getCurrentRate(),
+        remise_articles: construireRemisesParArticle(),
+        remise_globale: construireRemiseGlobale(),
+        motif_remise: document.getElementById('remiseMotif').value.trim()
     };
 
     try {
@@ -988,11 +1676,19 @@ async function saveSale() {
         const result = await response.json();
 
         if (response.ok && result.success) {
+            const reducTotal = totals.remise_articles + totals.remise_globale;
+            const reducFmt = (totals.currency === 'USD')
+                ? `$ ${reducTotal.toFixed(2)}`
+                : formatCurrency(reducTotal, 'CDF');
             closeSaleModal();
             loadSales();
             loadSalesStatistics();
 
-            if (typeof showToast === 'function') showToast('Vente enregistrée avec succès !', 'success');
+            if (typeof showToast === 'function') {
+                showToast(reducTotal > 0.004
+                    ? `Vente enregistrée avec une réduction de ${reducFmt} !`
+                    : 'Vente enregistrée avec succès !', 'success');
+            }
             generateInvoice(result.vente_id);
         } else {
             if (typeof showToast === 'function') showToast(result.message || 'Erreur enregistrement', 'danger');
@@ -1208,22 +1904,41 @@ async function generateInvoice(saleId) {
 
         (sale.produits || []).forEach(p => {
             const unitPrice = p.prix_vente;
-            const lineTotal = p.prix_vente * p.quantite;
-            const lineDisplay = (sale.devise === 'USD') ? `$ ${lineTotal}` : `${formatCurrency(lineTotal, 'CDF')}`;
+            const brutLine = p.prix_vente * p.quantite;
+            const lineTotal = Math.max(0, brutLine - (p.remise || 0));
+            const invFmt = (v) => (sale.devise === 'USD') ? `$ ${Number(v).toFixed(2)}` : formatCurrency(v, 'CDF');
+            const lineDisplay = invFmt(lineTotal);
             const unitDisplay = (sale.devise === 'USD') ? '$ ' + unitPrice : formatCurrency(unitPrice, 'CDF');
             html += '<tr>';
             html += '<td class="inv-cell-name">' + escapeHtml(p.nom) + '</td>';
             html += '<td class="inv-cell-num">' + p.quantite + '</td>';
             html += '<td class="inv-cell-num">' + unitDisplay + '</td>';
-            html += '<td class="inv-cell-num inv-cell-total">' + lineDisplay + '</td>';
+            html += '<td class="inv-cell-num inv-cell-total">' + lineDisplay
+                + ((p.remise || 0) > 0.004 ? '<div style="font-size:0.7rem; color:#b45309; font-weight:700;">remise ' + invFmt(p.remise) + '</div>' : '')
+                + '</td>';
             html += '</tr>';
         });
 
         html += '</tbody></table>';
 
-        // Total (seul le total des prix des produits est affiché)
+        // Totaux : sous-total, réductions, net à payer
+        const invFmtSale = (v) => (sale.devise === 'USD') ? '$ ' + Number(v).toFixed(2) : formatCurrency(v, 'CDF');
+        const brutTotal = (sale.produits || []).reduce((acc, p) => acc + (p.prix_vente * p.quantite), 0);
         html += '<div class="inv-totals"><div class="inv-total-box">';
-        html += '<div class="inv-total-line"><span>Total</span><strong>' + formatCurrency(totalFC, 'CDF') + '</strong></div>';
+        if (sale.a_reduction) {
+            html += '<div class="inv-total-line" style="border-top:none; font-weight:700; font-size:0.9rem; color:#475569;"><span>Sous-total</span><span>' + invFmtSale(brutTotal) + '</span></div>';
+            if ((sale.remise_articles || 0) > 0.004) {
+                html += '<div class="inv-total-line" style="border-top:none; font-weight:700; font-size:0.9rem; color:#b45309;"><span>Réduction articles</span><span>- ' + invFmtSale(sale.remise_articles) + '</span></div>';
+            }
+            if ((sale.remise_globale || 0) > 0.004) {
+                html += '<div class="inv-total-line" style="border-top:none; font-weight:700; font-size:0.9rem; color:#b45309;"><span>Réduction globale'
+                    + (sale.remise_type === 'pourcentage' ? ' (%)' : '') + '</span><span>- ' + invFmtSale(sale.remise_globale) + '</span></div>';
+            }
+            if (sale.motif_remise) {
+                html += '<div style="font-size:0.75rem; color:#92400e; font-style:italic; text-align:right; margin-bottom:4px;">« ' + escapeHtml(sale.motif_remise) + ' »</div>';
+            }
+        }
+        html += '<div class="inv-total-line"><span>' + (sale.a_reduction ? 'Net à payer' : 'Total') + '</span><strong>' + formatCurrency(totalFC, 'CDF') + '</strong></div>';
         html += '<div class="inv-total-usd">$ ' + totalUSD.toFixed(2) + '</div>';
         html += '</div></div>';
 

@@ -15,6 +15,7 @@ import time
 import logging
 import smtplib
 import socket
+from sqlalchemy.exc import OperationalError
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr, formatdate
@@ -656,12 +657,28 @@ def flush_rapports(limite=None):
 
 def _boucle_tache(app, arret):
     logger.info('Tâche de fond « rapports email » démarrée.')
+    erreurs_consecutives = 0
     while not arret.is_set():
         try:
+            # Pendant une synchronisation, la base est réécrite : on attend
+            # plutôt que de provoquer un « database is locked ».
+            from app.sync import sync_en_cours
+            if sync_en_cours():
+                arret.wait(5)
+                continue
             with app.app_context():
                 _requeue_erreurs()
                 planifier_emails_manquants()
                 envoyer_emails_en_attente(limite=LIMITE_ENVOI_CYCLE)
+            erreurs_consecutives = 0
+        except OperationalError as e:
+            # Base momentanément occupée : on patiente et on réessaie au cycle
+            # suivant, sans faire diedre le journal.
+            erreurs_consecutives += 1
+            if erreurs_consecutives in (1, 10):
+                logger.warning('Base occupée, cycle reporté (%s)', e)
+            arret.wait(min(INTERVALLE_CYCLE, 30))
+            continue
         except Exception:
             logger.exception('Erreur dans la tâche de fond des rapports email')
         arret.wait(INTERVALLE_CYCLE)

@@ -1,7 +1,7 @@
 """
 Modèle Produit pour la gestion du stock
 """
-from datetime import datetime
+from datetime import date as date_type, datetime
 import random
 import string
 from app import db
@@ -27,6 +27,7 @@ class Produit(db.Model):
     image_url_1 = db.Column(db.String(512))
     image_url_2 = db.Column(db.String(512))
     compatibilites = db.Column(db.Text)
+    date_ajout = db.Column(db.Date, default=date_type.today)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -39,7 +40,24 @@ class Produit(db.Model):
             return 'faible'
         else:
             return 'disponible'
-    
+
+    @property
+    def date_ajout_effective(self):
+        """Date d'ajout retenue : le champ saisi, sinon la date de creation."""
+        if self.date_ajout:
+            return self.date_ajout
+        if self.created_at:
+            return self.created_at.date()
+        return None
+
+    @property
+    def age_jours(self):
+        """Nombre de jours ecoules depuis l'ajout en stock (0 si inconnu)."""
+        d = self.date_ajout_effective
+        if not d:
+            return 0
+        return max(0, (date_type.today() - d).days)
+
     def generer_reference(self):
         """Génère une référence automatique en local"""
         if not self.reference:
@@ -82,6 +100,8 @@ class Produit(db.Model):
             'image_url_2': self.image_url_2,
             'compatibilites': self.compatibilites,
             'statut': self.statut,
+            'date_ajout': self.date_ajout_effective.isoformat() if self.date_ajout_effective else None,
+            'age_jours': self.age_jours,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

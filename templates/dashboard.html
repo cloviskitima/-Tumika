@@ -62,22 +62,42 @@
     <!-- Sales Chart -->
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">Évolution des Ventes</h3>
             <div>
-                <select class="form-control" style="width: auto; display: inline-block;">
-                    <option>Cette semaine</option>
-                    <option>Ce mois</option>
-                    <option>Cette année</option>
+                <h3 class="card-title">Évolution du chiffre d'affaires</h3>
+                <p style="margin: 2px 0 0; font-size: 0.78rem; color: var(--gray-500);">
+                    Chandeliers journaliers en francs CFA
+                </p>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center;">
+                <select id="periodeSelect" class="form-control" style="width: auto; display: inline-block;">
+                    <option value="7j">7 derniers jours</option>
+                    <option value="30j" selected>30 derniers jours</option>
+                    <option value="90j">90 derniers jours</option>
+                    <option value="365j">12 derniers mois</option>
                 </select>
+                <button type="button" id="rafraichirGraphiques" class="btn btn-secondary" title="Recharger les graphiques">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
             </div>
         </div>
         <div class="card-body">
-            <div style="height: 300px; display: flex; align-items: center; justify-content: center; color: var(--gray-500);">
-                <div style="text-align: center;">
-                    <i class="bi bi-graph-up" style="font-size: 3rem; margin-bottom: 16px;"></i>
-                    <p>Graphique des ventes</p>
+            <div id="resumeMarche" style="display: flex; flex-wrap: wrap; gap: 18px; padding: 10px 12px; margin-bottom: 8px; border-radius: 8px; background: var(--gray-100, #f1f5f9); font-size: 0.78rem;">
+                <span style="color: var(--gray-500);">Survolez le graphique pour les valeurs du jour.</span>
+            </div>
+            <div style="position: relative; height: 320px;">
+                <canvas id="ventesChart"></canvas>
+                <div id="messageVideGraphique" style="position: absolute; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--gray-500); background: rgba(255,255,255,0.92); border-radius: 8px; text-align: center; padding: 20px;">
+                    <i class="bi bi-graph-up" style="font-size: 2.2rem;"></i>
+                    <p id="texteMessageVide" style="margin: 0;">Aucune vente sur cette période.</p>
                 </div>
             </div>
+            <p style="margin: 10px 0 0; font-size: 0.74rem; color: var(--gray-500);">
+                <span style="display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: #16a34a; vertical-align: middle;"></span>
+                clôture ≥ ouverture
+                &nbsp;&nbsp;
+                <span style="display: inline-block; width: 9px; height: 9px; border-radius: 2px; background: #dc2626; vertical-align: middle;"></span>
+                clôture &lt; ouverture
+            </p>
         </div>
     </div>
     
@@ -87,12 +107,24 @@
             <h3 class="card-title">Répartition Stock</h3>
         </div>
         <div class="card-body">
-            <div style="height: 300px; display: flex; align-items: center; justify-content: center; color: var(--gray-500);">
-                <div style="text-align: center;">
-                    <i class="bi bi-pie-chart" style="font-size: 3rem; margin-bottom: 16px;"></i>
-                    <p>Graphique circulaire</p>
-                </div>
+            <div style="position: relative; height: 320px;">
+                <canvas id="stockChart"></canvas>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Products Chart -->
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <h3 class="card-title">Meilleures ventes</h3>
+        <p style="margin: 2px 0 0; font-size: 0.78rem; color: var(--gray-500);">
+            Chiffre d'affaires par article, sur la période choisie
+        </p>
+    </div>
+    <div class="card-body">
+        <div style="position: relative; height: 300px;">
+            <canvas id="topProduitsChart"></canvas>
         </div>
     </div>
 </div>
@@ -190,6 +222,360 @@
 
 {% block scripts %}
 <script>
+// ===========================================================================
+//  Tableau de bord : graphiques 100% locaux (Chart.js installé sur le poste,
+//  aucune connexion Internet requise).
+//
+//  Le graphique principal est un vrai graphique en chandeliers (OHLC) :
+//  pour chaque jour on affiche l'ouverture, le plus haut, le plus bas et la
+//  clôture du chiffre d'affaires, calculés en base. C'est le même principe
+//  que les graphiques de marché : une bougie = une période.
+// ===========================================================================
+
+const COULEURS = {
+    hausse: '#16a34a',
+    baisse: '#dc2626',
+    neutre: '#94a3b8',
+    grille: 'rgba(148, 163, 184, 0.18)',
+    texte: '#64748b',
+    fond: 'transparent'
+};
+
+let graphiqueStock = null;
+let graphiqueTop = null;
+let donneesTableauBord = null;
+
+// Palette de couleurs pour la répartition du stock
+const PALETTE_STOCK = [
+    '#1e3a8a', '#0d9488', '#b45309', '#7c3aed', '#be123c',
+    '#0369a1', '#65a30d', '#c2410c'
+];
+
+function paletteBourses(base, obligatoire) {
+    return getComputedStyle(document.documentElement)
+        .getPropertyValue(base).trim() || obligatoire;
+}
+
+function formatFc(valeur) {
+    const n = Number(valeur) || 0;
+    if (Math.abs(n) >= 1000000) {
+        return (n / 1000000).toFixed(2).replace(/\.00$/, '') + ' M FC';
+    }
+    if (Math.abs(n) >= 1000) {
+        return Math.round(n).toLocaleString('fr-FR') + ' FC';
+    }
+    return Math.round(n) + ' FC';
+}
+
+function formatNombreCourt(valeur) {
+    const n = Number(valeur) || 0;
+    if (Math.abs(n) >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (Math.abs(n) >= 1000) return Math.round(n / 1000) + 'k';
+    return String(Math.round(n));
+}
+
+function libelleJour(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+}
+// ---------------------------------------------------------------- OHLC
+// Le graphique principal est dessiné par notre propre moteur
+// (static/js/graphique-marche.js) : il Trace les bougies, le volume et le
+// réticule directement sur le canvas. Aucune bibliothèque externe, donc
+// rien ne peut manquer hors connexion.
+let graphiqueMarche = null;
+
+function paletteBourses(base, obligatoire) {
+    return getComputedStyle(document.documentElement)
+        .getPropertyValue(base).trim() || obligatoire;
+}
+
+function formatFc(valeur) {
+    const n = Number(valeur) || 0;
+    if (Math.abs(n) >= 1000000) {
+        return (n / 1000000).toFixed(2).replace(/\.00$/, '') + ' M FC';
+    }
+    if (Math.abs(n) >= 1000) {
+        return Math.round(n).toLocaleString('fr-FR') + ' FC';
+    }
+    return Math.round(n) + ' FC';
+}
+
+function formatNombreCourt(valeur) {
+    const n = Number(valeur) || 0;
+    if (Math.abs(n) >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (Math.abs(n) >= 1000) return Math.round(n / 1000) + 'k';
+    return String(Math.round(n));
+}
+
+// ------------------------------------------------------ graphique principal
+function construireGraphiqueVentes(candles) {
+    const canvas = document.getElementById('ventesChart');
+    if (!canvas) return;
+
+    if (graphiqueMarche) graphiqueMarche.detruire();
+    graphiqueMarche = null;
+
+    graphiqueMarche = new GraphiqueMarche(canvas, {
+        surReticule: function (bougie) {
+            mettreAJourResume(bougie);
+        }
+    });
+    graphiqueMarche.setDonnees(candles);
+}
+
+// Réticule OHLC affiché au-dessus du graphique
+function mettreAJourResume(bougie) {
+    const zone = document.getElementById('resumeMarche');
+    if (!zone) return;
+    if (!bougie) {
+        zone.innerHTML = '<span style="color: var(--gray-500);">Survolez le graphique pour les valeurs du jour.</span>';
+        return;
+    }
+    const monte = bougie.c >= bougie.o;
+    const couleur = bougie.v === 0 ? '#94a3b8' : (monte ? '#16a34a' : '#dc2626');
+    const variation = bougie.o > 0 ? ((bougie.c - bougie.o) / bougie.o * 100) : 0;
+    const caseHtml = (label, valeur, couleurVal) =>
+        '<span><span style="color: var(--gray-500);">' + label + '</span> ' +
+        '<strong style="color: ' + (couleurVal || '#1e293b') + ';">' + valeur + '</strong></span>';
+
+    zone.innerHTML =
+        '<strong style="color: #1e293b;">' +
+        new Date(bougie.jour + 'T00:00:00').toLocaleDateString('fr-FR',
+            { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) +
+        '</strong>' +
+        caseHtml('O', formatFc(bougie.o)) +
+        caseHtml('H', formatFc(bougie.h)) +
+        caseHtml('B', formatFc(bougie.b)) +
+        caseHtml('C', formatFc(bougie.c), couleur) +
+        caseHtml('Var.', (variation >= 0 ? '+' : '') + variation.toFixed(1) + ' %', couleur) +
+        caseHtml('Ventes', bougie.v);
+}
+
+// ------------------------------------------------- graphique répartition
+function construireGraphiqueStock(repartition, indicateurs) {
+    const canvas = document.getElementById('stockChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    // On détruit l'instance déjà rattachée à ce canvas, quelle qu'elle soit
+    const existante = Chart.getChart(canvas);
+    if (existante) existante.destroy();
+    graphiqueStock = null;
+
+    const etiquettes = repartition.map(function (r) { return r.categorie; });
+    const valeurs = repartition.map(function (r) { return Math.round(r.valeur); });
+    const total = valeurs.reduce(function (a, b) { return a + b; }, 0);
+
+    graphiqueStock = new Chart(canvas.getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: etiquettes,
+            datasets: [{
+                data: valeurs,
+                backgroundColor: etiquettes.map(function (_, i) { return PALETTE_STOCK[i % PALETTE_STOCK.length]; }),
+                borderColor: '#ffffff',
+                borderWidth: 2,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '62%',
+            animation: { animateRotate: true, duration: 500 },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: COULEURS.texte,
+                        boxWidth: 11,
+                        boxHeight: 11,
+                        font: { size: 11 },
+                        padding: 12
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.94)',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#e2e8f0',
+                    borderColor: 'rgba(148, 163, 184, 0.35)',
+                    borderWidth: 1,
+                    padding: 11,
+                    callbacks: {
+                        label: function (item) {
+                            const part = total > 0 ? (item.parsed / total * 100) : 0;
+                            return item.label + ' : ' + formatFc(item.parsed) + ' (' + part.toFixed(1) + ' %)';
+                        }
+                    }
+                }
+            }
+        },
+        plugins: [{
+            id: 'totalAuCentre',
+            afterDraw: function (graphe) {
+                const meta = graphe.getDatasetMeta(0);
+                if (!meta || !meta.data.length) return;
+                const centre = meta.data[0];
+                const ctx = graphe.ctx;
+                ctx.save();
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#1e293b';
+                ctx.font = '700 15px system-ui, -apple-system, "Segoe UI", sans-serif';
+                ctx.fillText(formatNombreCourt(total) + ' FC', centre.x, centre.y - 7);
+                ctx.fillStyle = COULEURS.texte;
+                ctx.font = '500 11px system-ui, -apple-system, "Segoe UI", sans-serif';
+                ctx.fillText(indicateurs.produits + ' références', centre.x, centre.y + 11);
+                ctx.restore();
+            }
+        }]
+    });
+}
+
+// --------------------------------------------- graphique meilleurs produits
+function construireGraphiqueTopProduits(meilleurs) {
+    const canvas = document.getElementById('topProduitsChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const existante = Chart.getChart(canvas);
+    if (existante) existante.destroy();
+    graphiqueTop = null;
+
+    const donnees = meilleurs.slice().reverse();
+    if (donnees.length === 0) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+    }
+
+    graphiqueTop = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: donnees.map(function (p) { return p.nom; }),
+            datasets: [{
+                label: 'Chiffre d\'affaires',
+                data: donnees.map(function (p) { return p.ca; }),
+                backgroundColor: donnees.map(function (_, i) {
+                    return 'rgba(30, 58, 138, ' + (0.55 + 0.4 * (i + 1) / donnees.length) + ')';
+                }),
+                borderRadius: 5,
+                borderSkipped: false,
+                maxBarThickness: 42
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 450 },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { color: COULEURS.grille },
+                    border: { display: false },
+                    ticks: {
+                        color: COULEURS.texte,
+                        font: { size: 11 },
+                        callback: function (v) { return formatNombreCourt(v); }
+                    }
+                },
+                y: {
+                    grid: { display: false },
+                    border: { color: paletteBourses('--gray-300', '#e2e8f0') },
+                    ticks: { color: '#334155', font: { size: 12 } }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.94)',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#e2e8f0',
+                    borderColor: 'rgba(148, 163, 184, 0.35)',
+                    borderWidth: 1,
+                    padding: 11,
+                    displayColors: false,
+                    callbacks: {
+                        label: function (item) {
+                            return formatFc(item.parsed.x) +
+                                ' — ' + donnees[item.dataIndex].quantite + ' en stock';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ---------------------------------------------------------- chargement
+function afficherEtatGraphiques(chargement) {
+    const boite = document.getElementById('messageVideGraphique');
+    if (!boite) return;
+    if (chargement) {
+        boite.style.display = 'flex';
+        document.getElementById('texteMessageVide').textContent = 'Chargement des données…';
+    } else {
+        boite.style.display = 'none';
+    }
+}
+
+async function chargerGraphiques() {
+    const select = document.getElementById('periodeSelect');
+    const periode = select ? select.value : '30j';
+    afficherEtatGraphiques(true);
+
+    try {
+        const reponse = await fetch('/api/dashboard/serie?periode=' + encodeURIComponent(periode));
+        const data = await reponse.json();
+
+        if (!reponse.ok || !data.success) {
+            throw new Error((data && data.message) ? data.message : 'réponse invalide');
+        }
+
+        donneesTableauBord = data;
+        const candles = data.candles || [];
+        const indicateurs = data.indicateurs || {};
+
+        construireGraphiqueVentes(candles);
+        construireGraphiqueStock(data.repartition_stock || [], indicateurs);
+        construireGraphiqueTopProduits(data.meilleurs_produits || []);
+
+        // Message si la période est vide
+        const avecVentes = candles.some(function (b) { return b.v > 0; });
+        if (!avecVentes) {
+            const boite = document.getElementById('messageVideGraphique');
+            if (boite) {
+                boite.style.display = 'flex';
+                document.getElementById('texteMessageVide').textContent =
+                    'Aucune vente enregistrée sur cette période. Choisissez une autre durée.';
+            }
+        } else {
+            afficherEtatGraphiques(false);
+        }
+
+        mettreAJourResume(null);
+
+        // Indicateurs du haut
+        const elTotal = document.getElementById('totalProducts');
+        if (elTotal) elTotal.textContent = indicateurs.produits || 0;
+        const elValeur = document.getElementById('totalStockValue');
+        if (elValeur) elValeur.textContent = formatFc(indicateurs.valeur_stock || 0);
+        const elAlertes = document.getElementById('lowStockCount');
+        if (elAlertes) elAlertes.textContent = indicateurs.alertes_stock || 0;
+        const elVentes = document.getElementById('todaySales');
+        if (elVentes) elVentes.textContent = indicateurs.ventes_jour || 0;
+
+    } catch (erreur) {
+        console.error('Erreur chargement des graphiques du tableau de bord :', erreur);
+        const boite = document.getElementById('messageVideGraphique');
+        if (boite) {
+            boite.style.display = 'flex';
+            document.getElementById('texteMessageVide').textContent =
+                'Graphiques indisponibles : ' + (erreur.message || 'erreur inconnue');
+        }
+    }
+}
+
 // Charger les statistiques depuis l'API
 async function loadDashboardStats() {
     try {
@@ -314,7 +700,23 @@ function renderLowStockTable(products) {
     }).join('');
 }
 
-// Charger les statistiques au chargement de la page
-document.addEventListener('DOMContentLoaded', loadDashboardStats);
+// Charger les statistiques et les graphiques au chargement de la page
+document.addEventListener('DOMContentLoaded', function () {
+    loadDashboardStats();
+    chargerGraphiques();
+
+    const select = document.getElementById('periodeSelect');
+    if (select) {
+        select.addEventListener('change', chargerGraphiques);
+    }
+
+    const bouton = document.getElementById('rafraichirGraphiques');
+    if (bouton) {
+        bouton.addEventListener('click', function () {
+            chargerGraphiques();
+            loadDashboardStats();
+        });
+    }
+});
 </script>
 {% endblock %}

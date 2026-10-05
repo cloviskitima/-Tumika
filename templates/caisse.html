@@ -58,6 +58,153 @@
         margin: 15mm;
     }
 }
+
+/* ===== Détail au survol / clic (client & marchandises) ===== */
+.cell-link {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+}
+.cell-link:hover .cell-link-txt {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.cell-link-txt {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 230px;
+}
+.libelle-txt {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 240px;
+    display: inline-block;
+    vertical-align: bottom;
+}
+.mini-pop {
+    position: fixed;
+    z-index: 1090;
+    min-width: 280px;
+    max-width: 360px;
+    background: #ffffff;
+    border: 1px solid var(--gray-200);
+    border-radius: 12px;
+    box-shadow: 0 18px 40px -12px rgba(15, 23, 42, 0.28);
+    padding: 12px 14px;
+    font-size: 0.85rem;
+    color: var(--gray-700);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.mini-pop.show {
+    opacity: 1;
+    transform: none;
+}
+.mini-pop h6 {
+    margin: 0 0 8px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--gray-500);
+    font-weight: 700;
+}
+.mini-pop ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 230px;
+    overflow: auto;
+}
+.mini-pop li {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--gray-200);
+}
+.mini-pop li:last-child {
+    border-bottom: none;
+}
+.mini-pop .mp-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mini-pop .mp-val {
+    font-weight: 700;
+    color: var(--gray-900);
+    white-space: nowrap;
+}
+.row-detail > td {
+    background: #f8fafc;
+    padding: 0 !important;
+    border-top: 1px solid var(--gray-200);
+}
+.row-detail-box {
+    padding: 14px 20px 16px;
+    animation: rowIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes rowIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: none; }
+}
+.rd-title {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--gray-500);
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+.rd-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+}
+.rd-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #ffffff;
+    border: 1px solid var(--gray-200);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 0.85rem;
+}
+.rd-item .rd-qty {
+    font-weight: 800;
+    color: #1d4ed8;
+    background: #eff6ff;
+    border-radius: 8px;
+    padding: 2px 8px;
+    font-size: 0.78rem;
+}
+.rd-item .rd-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.rd-item .rd-total {
+    font-weight: 700;
+    color: #047857;
+    white-space: nowrap;
+}
+.rd-client {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    font-size: 0.88rem;
+}
+.rd-client b {
+    color: var(--gray-900);
+}
 </style>
 
 <!-- Stats Cards -->
@@ -132,8 +279,12 @@
             </div>
             
             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <button class="btn btn-outline-secondary" onclick="rafraichirCaisse()" title="Recharger les mouvements et les soldes (utile apres une vente faite dans un autre onglet)">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span>Actualiser</span>
+                </button>
                 <button class="btn btn-secondary" onclick="openReportModal()" title="Générer et imprimer le rapport de caisse">
-                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    <i class="bi bi-file-earlier-bar-graph"></i>
                     <span>Rapport de Caisse</span>
                 </button>
                 <button class="btn btn-success" onclick="openMovementModal('in')">
@@ -175,6 +326,27 @@
                     </tr>
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Pagination des mouvements -->
+    <div class="card-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 14px 20px; border-top: 1px solid var(--gray-200);">
+        <div id="mvtPaginationSummary" class="no-print" style="color: var(--gray-500); font-size: 0.88rem;">
+            Affichage 0-0 sur 0 mouvement(s)
+        </div>
+        <div class="no-print" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <label for="mvtPageSizeSelect" style="color: var(--gray-500); font-size: 0.85rem; font-weight: 600;">Lignes :</label>
+            <select id="mvtPageSizeSelect" class="form-select form-select-sm" style="width: 96px; border-radius: 8px;" onchange="changerPageSizeMvt()">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="250">250</option>
+                <option value="all">Tout</option>
+            </select>
+            <button class="btn btn-sm btn-outline-secondary" id="mvtPrevBtn" onclick="pageMvtPrec()" disabled>←</button>
+            <span id="mvtPageIndicator" style="font-weight: 600; min-width: 26px; text-align: center; font-size: 0.9rem;">1</span>
+            <button class="btn btn-sm btn-outline-secondary" id="mvtNextBtn" onclick="pageMvtSuiv()" disabled>→</button>
         </div>
     </div>
 </div>
@@ -512,6 +684,10 @@ async function loadCashStatistics() {
     }
 }
 
+let mouvementsData = [];
+let detailMouvementsOuverts = {};
+let popoverMvt = null;
+
 async function applyFilters() {
     const search = document.getElementById('searchInput').value;
     const currency = document.getElementById('currencyFilter').value;
@@ -560,6 +736,7 @@ async function applyFilters() {
 
         const data = await response.json();
         if (data.success) {
+            mvtPageCourante = 1;
             renderMovementsTable(data.mouvements || []);
         } else {
             console.error('API error:', data.message);
@@ -579,10 +756,93 @@ async function loadMovements() {
     await applyFilters();
 }
 
-function renderMovementsTable(movements) {
+// Recharge les mouvements et les soldes sans recharger toute la page.
+async function rafraichirCaisse() {
+    const btn = document.querySelector('button[onclick="rafraichirCaisse()"]');
+    if (btn) {
+        btn.disabled = true;
+        const ic = btn.querySelector('i');
+        if (ic) ic.style.display = 'none';
+    }
+    try {
+        await Promise.all([loadCashStatistics(), applyFilters()]);
+        if (typeof showToast === 'function') showToast('Caisse actualisée', 'success');
+    } catch (e) {
+        if (typeof showToast === 'function') showToast('Actualisation impossible', 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            const ic = btn.querySelector('i');
+            if (ic) ic.style.display = '';
+        }
+    }
+}
+
+// ── Pagination des mouvements de caisse ──
+const MVT_PAGE_SIZE_KEY = 'tumika_pageSize_caisse';
+const MVT_PAGE_SIZE_VALEURS = ['10', '20', '50', '100', '250', 'all'];
+let mvtPageCourante = 1;
+
+function chargerPageSizeMvt() {
+    try {
+        const v = localStorage.getItem(MVT_PAGE_SIZE_KEY);
+        if (v && MVT_PAGE_SIZE_VALEURS.indexOf(v) !== -1) return v;
+    } catch (e) { /* localStorage indisponible */ }
+    return '10';
+}
+
+function majPaginationMvt(total) {
+    const sel = document.getElementById('mvtPageSizeSelect');
+    if (sel) sel.value = chargerPageSizeMvt();
+    const val = sel ? sel.value : '10';
+    const toutAffiche = val === 'all';
+    const perPage = toutAffiche ? (total || 1) : (parseInt(val, 10) || 10);
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    if (mvtPageCourante > totalPages) mvtPageCourante = totalPages;
+    if (mvtPageCourante < 1) mvtPageCourante = 1;
+
+    const start = (mvtPageCourante - 1) * perPage;
+    const end = total === 0 ? 0 : Math.min(start + perPage, total);
+
+    const resume = document.getElementById('mvtPaginationSummary');
+    if (resume) {
+        resume.textContent = `Affichage ${total === 0 ? 0 : start + 1}-${end} sur ${total} mouvement${total > 1 ? 's' : ''}`
+            + (toutAffiche ? ' (tout affiché)' : ` — page ${mvtPageCourante}/${totalPages}`);
+    }
+    const indic = document.getElementById('mvtPageIndicator');
+    if (indic) indic.textContent = toutAffiche ? 'Tout' : mvtPageCourante;
+    const prev = document.getElementById('mvtPrevBtn');
+    const next = document.getElementById('mvtNextBtn');
+    if (prev) prev.disabled = mvtPageCourante <= 1;
+    if (next) next.disabled = mvtPageCourante >= totalPages;
+    return { start, perPage };
+}
+
+function changerPageSizeMvt() {
+    const sel = document.getElementById('mvtPageSizeSelect');
+    if (sel) {
+        try { localStorage.setItem(MVT_PAGE_SIZE_KEY, sel.value); } catch (e) { /* ignoré */ }
+    }
+    mvtPageCourante = 1;
+    renderMovementsTable(mouvementsData || []);
+}
+
+function pageMvtPrec() {
+    if (mvtPageCourante > 1) { mvtPageCourante--; renderMovementsTable(mouvementsData || []); }
+}
+
+function pageMvtSuiv() {
+    mvtPageCourante++;
+    renderMovementsTable(mouvementsData || []);
+}
+
+function renderMovementsTable(mouvements) {
     const tbody = document.getElementById('movementsTableBody');
-    
-    if (!movements || movements.length === 0) {
+    mouvementsData = mouvements || [];
+    const { start, perPage } = majPaginationMvt(mouvementsData.length);
+    const pageMouvements = mouvementsData.slice(start, start + perPage);
+
+    if (pageMouvements.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="8" style="text-align: center; color: var(--gray-500); padding: 40px;">
@@ -594,7 +854,7 @@ function renderMovementsTable(movements) {
         return;
     }
     
-    tbody.innerHTML = movements.map(movement => {
+    tbody.innerHTML = pageMouvements.map(movement => {
         const isUSD = (movement.devise === 'USD');
         const badgeColor = isUSD ? 'background: #dbeafe; color: #1e40af;' : 'background: #f3e8ff; color: #6b21a8;';
         const formattedAmount = isUSD ? formatCurrencyUsd(movement.montant) : formatCurrencyCdf(movement.montant);
@@ -610,6 +870,8 @@ function renderMovementsTable(movements) {
             }
         }
 
+        const detail = movement.vente_info;
+
         return `
             <tr>
                 <td><strong>${bonRef}</strong></td>
@@ -620,9 +882,21 @@ function renderMovementsTable(movements) {
                     </span>
                 </td>
                 <td>
-                    <strong>${movement.libelle || 'Mouvement'}</strong>
-                    ${sourceBadge}
-                    ${movement.notes ? `<div style="font-size: 0.8rem; color: var(--gray-500); margin-top: 2px;">${movement.notes}</div>` : ''}
+                    ${detail ? `
+                        <span class="cell-link" onclick="basculerDetailMouvement(${movement.id})"
+                              onmouseenter="afficherPopoverMouvement(event, ${movement.id})"
+                              onmouseleave="masquerPopoverMouvement()"
+                              title="Cliquez pour voir le client et les marchandises">
+                            <span class="libelle-txt"><strong>${movement.libelle || 'Mouvement'}</strong></span>
+                            <i class="bi bi-chevron-down" style="font-size: 0.75rem; color: var(--gray-400);"></i>
+                        </span>
+                        ${sourceBadge}
+                        ${movement.notes ? `<div style="font-size: 0.8rem; color: var(--gray-500); margin-top: 2px;">${movement.notes}</div>` : ''}
+                    ` : `
+                        <strong>${movement.libelle || 'Mouvement'}</strong>
+                        ${sourceBadge}
+                        ${movement.notes ? `<div style="font-size: 0.8rem; color: var(--gray-500); margin-top: 2px;">${movement.notes}</div>` : ''}
+                    `}
                 </td>
                 <td style="font-weight: 700; color: ${movement.type === 'in' ? 'var(--success)' : 'var(--danger)'};">
                     ${movement.type === 'in' ? '+' : '-'}${formattedAmount}
@@ -650,8 +924,122 @@ function renderMovementsTable(movements) {
                     </div>
                 </td>
             </tr>
+            ${detail ? `
+            <tr class="row-detail" id="detailMvt${movement.id}" style="display: none;">
+                <td colspan="8" class="no-print"><div class="row-detail-box" id="detailMvtBox${movement.id}"></div></td>
+            </tr>` : ''}
         `;
     }).join('');
+
+    Object.keys(detailMouvementsOuverts).forEach(id => {
+        if (detailMouvementsOuverts[id]) {
+            const tr = document.getElementById('detailMvt' + id);
+            if (tr) construireDetailMouvement(parseInt(id, 10), tr);
+        }
+    });
+}
+
+function trouverMouvement(id) {
+    return (mouvementsData || []).find(m => m.id === id);
+}
+
+function etiquettePaiementMvt(info) {
+    if (!info) return '';
+    if (info.mode_paiement === 'credit' || info.statut === 'pending') {
+        return '<i class="bi bi-clock-history"></i> Crédit (non encaissé)';
+    }
+    if (!info.client || info.client === 'Client comptant') {
+        return '<i class="bi bi-cash-coin"></i> Payé comptant';
+    }
+    return '<i class="bi bi-cash-stack"></i> Payé comptant';
+}
+
+function construireDetailMouvement(id, tr) {
+    const m = trouverMouvement(id);
+    const box = document.getElementById('detailMvtBox' + id);
+    if (!m || !box || !m.vente_info) return;
+    const info = m.vente_info;
+    const produits = info.produits || [];
+    const isUSD = (info.devise === 'USD');
+    const fmt = (v) => isUSD ? '$ ' + Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : formatCurrencyCdf(v);
+
+    const items = produits.length
+        ? produits.map(p => `<div class="rd-item">
+                <span class="rd-qty">×${p.quantite}</span>
+                <span class="rd-name" title="${escapeHtmlMvt(p.nom)}">${escapeHtmlMvt(p.nom)}</span>
+                <span class="rd-total">${fmt(p.quantite * p.prix_vente)}</span>
+            </div>`).join('')
+        : '<div class="rd-item"><span class="rd-name">Aucune marchandise enregistrée.</span></div>';
+
+    box.innerHTML = `
+        <div class="rd-title"><i class="bi bi-person-circle"></i> Client</div>
+        <div class="rd-client" style="margin-bottom: 16px;">
+            <span>Nom : <b>${escapeHtmlMvt(info.client || 'Client comptant')}</b></span>
+            <span>Téléphone : <b>${escapeHtmlMvt(info.telephone || '—')}</b></span>
+            <span>Paiement : <b>${etiquettePaiementMvt(info)}</b></span>
+            <span>Montant : <b>${fmt(info.montant)}</b></span>
+        </div>
+        <div class="rd-title"><i class="bi bi-box-seam"></i> Marchandises vendues (${produits.length})</div>
+        <div class="rd-grid">${items}</div>`;
+}
+
+function basculerDetailMouvement(id) {
+    const tr = document.getElementById('detailMvt' + id);
+    if (!tr) return;
+    const ouvert = detailMouvementsOuverts[id];
+    detailMouvementsOuverts[id] = !ouvert;
+    if (ouvert) {
+        tr.style.display = 'none';
+    } else {
+        construireDetailMouvement(id, tr);
+        tr.style.display = 'table-row';
+    }
+}
+
+function afficherPopoverMouvement(event, id) {
+    const m = trouverMouvement(id);
+    if (!m || !m.vente_info) return;
+    if (!popoverMvt) {
+        popoverMvt = document.createElement('div');
+        popoverMvt.className = 'mini-pop';
+        document.body.appendChild(popoverMvt);
+    }
+    const info = m.vente_info;
+    const isUSD = (info.devise === 'USD');
+    const produits = info.produits || [];
+    const fmt = (v) => isUSD ? '$ ' + Number(v).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : formatCurrencyCdf(v);
+
+    const lignes = produits.map(p => `<li>
+            <span class="mp-name">${escapeHtmlMvt(p.nom)} <span style="color:var(--gray-400)">×${p.quantite}</span></span>
+            <span class="mp-val">${fmt(p.quantite * p.prix_vente)}</span>
+        </li>`).join('') || '<li><span class="mp-name">Aucune marchandise</span></li>';
+
+    popoverMvt.innerHTML = `<h6>Client</h6>
+        <div style="margin-bottom: 8px;">
+            <b>${escapeHtmlMvt(info.client || 'Client comptant')}</b><br>
+            <span style="font-size: 0.82rem; color: var(--gray-500);">${etiquettePaiementMvt(info)} · ${fmt(info.montant)}</span>
+        </div>
+        <h6>Marchandises vendues (${produits.length})</h6>
+        <ul>${lignes}</ul>`;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    popoverMvt.classList.add('show');
+    const w = popoverMvt.offsetWidth;
+    const h = popoverMvt.offsetHeight;
+    let left = rect.left;
+    let top = rect.bottom + 8;
+    if (left + w > window.innerWidth - 12) left = window.innerWidth - w - 12;
+    if (top + h > window.innerHeight - 12) top = Math.max(12, rect.top - h - 8);
+    popoverMvt.style.left = Math.max(12, left) + 'px';
+    popoverMvt.style.top = top + 'px';
+}
+
+function masquerPopoverMouvement() {
+    if (popoverMvt) popoverMvt.classList.remove('show');
+}
+
+function escapeHtmlMvt(text) {
+    return text ? String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
 }
 
 function formatCurrencyUsd(amount) {

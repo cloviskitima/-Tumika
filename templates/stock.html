@@ -117,23 +117,23 @@
         </div>
         
         <!-- Pagination -->
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-top: 1px solid var(--gray-200);">
-            <div style="color: var(--gray-500);">
-                Affichage 1-10 sur 0 résultats
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-top: 1px solid var(--gray-200); flex-wrap: wrap; gap: 10px;">
+            <div id="paginationSummary" style="color: var(--gray-500);">
+                Affichage 0-0 sur 0 résultats
             </div>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <select id="pageSizeSelect" class="form-control" style="width: auto;">
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <label for="pageSizeSelect" style="color: var(--gray-500); font-size: 0.85rem; font-weight: 600;">Lignes :</label>
+                <select id="pageSizeSelect" class="form-control" style="width: auto;" onchange="changerPageSize()">
                     <option value="10">10</option>
-                    <option value="25">25</option>
+                    <option value="20">20</option>
                     <option value="50">50</option>
                     <option value="100">100</option>
-                    <option value="all">∞</option>
+                    <option value="250">250</option>
+                    <option value="all">Tout</option>
                 </select>
-                <button class="btn btn-secondary" disabled>←</button>
-                <button class="btn btn-primary">1</button>
-                <button class="btn btn-secondary">2</button>
-                <button class="btn btn-secondary">3</button>
-                <button class="btn btn-secondary">→</button>
+                <button class="btn btn-secondary" id="prevPageBtn" onclick="pageStockPrec()" disabled>←</button>
+                <span id="pageIndicator" style="font-weight: 500; min-width: 22px; text-align: center;">1</span>
+                <button class="btn btn-secondary" id="nextPageBtn" onclick="pageStockSuiv()" disabled>→</button>
             </div>
         </div>
     </div>
@@ -208,6 +208,16 @@
                 <div>
                     <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--gray-700);">Stock minimum</label>
                     <input type="number" id="productMinStock" class="form-control" min="0" value="5" placeholder="5">
+                </div>
+                
+                <div>
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--gray-700);">
+                        Date d'ajout en stock
+                    </label>
+                    <input type="date" id="productDateAjout" class="form-control">
+                    <small style="display: block; margin-top: 4px; color: var(--gray-500); font-size: 11px;">
+                        Par défaut aujourd'hui. Sert à savoir depuis combien de temps l'article est en stock.
+                    </small>
                 </div>
                 
                 <div style="grid-column: 1 / -1;">
@@ -721,17 +731,80 @@ async function loadProducts() {
     }
 }
 
+// ── Pagination du tableau des produits ──
+const STOCK_PAGE_SIZE_KEY = 'tumika_pageSize_stock';
+const STOCK_PAGE_SIZE_VALEURS = ['10', '20', '50', '100', '250', 'all'];
+let stockPageCourante = 1;
+let produitsAffiches = [];
+
+function chargerStockPageSize() {
+    try {
+        const v = localStorage.getItem(STOCK_PAGE_SIZE_KEY);
+        if (v && STOCK_PAGE_SIZE_VALEURS.indexOf(v) !== -1) return v;
+    } catch (e) { /* localStorage indisponible */ }
+    return '10';
+}
+
+function majPaginationStock(total) {
+    const sel = document.getElementById('pageSizeSelect');
+    if (sel) sel.value = chargerStockPageSize();
+    const val = sel ? sel.value : '10';
+    const toutAffiche = val === 'all';
+    const perPage = toutAffiche ? (total || 1) : (parseInt(val, 10) || 10);
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    if (stockPageCourante > totalPages) stockPageCourante = totalPages;
+    if (stockPageCourante < 1) stockPageCourante = 1;
+
+    const start = (stockPageCourante - 1) * perPage;
+    const end = total === 0 ? 0 : Math.min(start + perPage, total);
+
+    const resume = document.getElementById('paginationSummary');
+    if (resume) {
+        resume.textContent = `Affichage ${total === 0 ? 0 : start + 1}-${end} sur ${total} produit${total > 1 ? 's' : ''}`
+            + (toutAffiche ? ' (tout affiché)' : ` — page ${stockPageCourante}/${totalPages}`);
+    }
+    const indic = document.getElementById('pageIndicator');
+    if (indic) indic.textContent = toutAffiche ? 'Tout' : stockPageCourante;
+    const prev = document.getElementById('prevPageBtn');
+    const next = document.getElementById('nextPageBtn');
+    if (prev) prev.disabled = stockPageCourante <= 1;
+    if (next) next.disabled = stockPageCourante >= totalPages;
+    return { start, perPage };
+}
+
+function changerPageSize() {
+    const sel = document.getElementById('pageSizeSelect');
+    if (sel) {
+        try { localStorage.setItem(STOCK_PAGE_SIZE_KEY, sel.value); } catch (e) { /* ignoré */ }
+    }
+    stockPageCourante = 1;
+    renderProductsTable(produitsAffiches || []);
+}
+
+function pageStockPrec() {
+    if (stockPageCourante > 1) { stockPageCourante--; renderProductsTable(produitsAffiches || []); }
+}
+
+function pageStockSuiv() {
+    stockPageCourante++;
+    renderProductsTable(produitsAffiches || []);
+}
+
 function renderProductsTable(products) {
     const tbody = document.getElementById('productsTableBody');
+    produitsAffiches = products || [];
+    const { start, perPage } = majPaginationStock(produitsAffiches.length);
+    const pageProducts = produitsAffiches.slice(start, start + perPage);
+    const produits = pageProducts;
     
-    if (products.length === 0) {
+    if (pageProducts.length === 0) {
         tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--gray-500); padding: 40px;"><i class="bi bi-box-seam" style="font-size: 2rem; margin-bottom: 16px;"></i><p>Aucun produit en stock</p></td></tr>';
         return;
     }
     
-    tbody.innerHTML = products.map(product => {
+    tbody.innerHTML = produits.map(product => {
         const status = getStockStatus(product.quantite, product.stock_min);
-        const dateAjout = product.date_creation ? new Date(product.date_creation).toLocaleDateString('fr-FR') : '-';
+        const dateAjout = formaterDateAjoutStock(product);
         
         return '<tr data-product-id="' + product.id + '">' +
             '<td>' +
@@ -793,9 +866,9 @@ async function exportStockSheet() {
         const today = new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
         const now = new Date().toLocaleTimeString('fr-FR');
         
-        let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fiche de Stock - ' + today + '</title><style>';
-        html += '@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap");';
-        html += 'body { font-family: "Roboto", Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; color: #333; }';
+    let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fiche de Stock - ' + today + '</title><style>';
+    // Police systeme : la fiche s'imprime aussi sans connexion.
+    html += 'body { font-family: "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; color: #333; }';
         html += '.container { max-width: 1400px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }';
         html += '.header { text-align: center; border-bottom: 4px solid #2c3e50; padding-bottom: 25px; margin-bottom: 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px 12px 0 0; margin: -40px -40px 30px -40px; }';
         html += '.header h1 { color: white; margin: 0; font-size: 32px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; }';
@@ -835,7 +908,7 @@ async function exportStockSheet() {
         let totalValue = 0;
         products.forEach(product => {
             const status = getStockStatus(product.quantite, product.stock_min);
-            const dateAjout = product.date_creation ? new Date(product.date_creation).toLocaleDateString('fr-FR') : '-';
+            const dateAjout = formaterDateAjoutStock(product);
             const stockValue = product.prix_achat * product.quantite;
             totalValue += stockValue;
             
@@ -897,6 +970,50 @@ function getStockStatus(quantity, minStock) {
     if (quantity === 0) return 'épuisé';
     if (quantity <= minStock) return 'faible';
     return 'disponible';
+}
+
+/* Date d'ajout en stock.
+   Le champ est 'date_ajout' (saisissable par l'utilisateur). Si un ancien
+   enregistrement ne l'a pas, on retombe sur la date de création.
+   Avant, le tableau lisait 'date_creation', un champ que l'API ne renvoyait
+   pas : la colonne restait donc toujours vide. */
+function dateAjoutStockBrute(product) {
+    if (!product) return null;
+    return product.date_ajout || product.created_at || null;
+}
+
+function formaterDateAjoutStock(product) {
+    const brute = dateAjoutStockBrute(product);
+    if (!brute) {
+        return '<span style="color: var(--gray-400);" title="Date d\'ajout inconnue">inconnue</span>';
+    }
+    const d = new Date(brute.length === 10 ? brute + 'T00:00:00' : brute);
+    if (isNaN(d.getTime())) {
+        return '<span style="color: var(--gray-400);" title="Date d\'ajout illisible">inconnue</span>';
+    }
+    const texte = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const jours = Math.max(0, Math.floor((new Date() - d) / 86400000));
+    let pastille = '';
+    let couleur = 'var(--gray-500)';
+    if (jours >= 365) { pastille = '1 an+'; couleur = '#b91c1c'; }
+    else if (jours >= 180) { pastille = '6 mois+'; couleur = '#c2410c'; }
+    else if (jours >= 90) { pastille = '3 mois+'; couleur = '#a16207'; }
+    else if (jours >= 30) { pastille = '1 mois+'; couleur = '#0f766e'; }
+    return texte +
+        '<div style="font-size: 11px; color: ' + couleur + ';">' +
+        (pastille ? pastille : jours + (jours <= 1 ? ' jour' : ' jours')) +
+        '</div>';
+}
+
+/* Valeur attendue par le champ <input type="date"> */
+function dateAjoutPourChamp(product) {
+    const brute = dateAjoutStockBrute(product);
+    if (!brute) return '';
+    const d = new Date(brute.length === 10 ? brute + 'T00:00:00' : brute);
+    if (isNaN(d.getTime())) return '';
+    return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
 }
 
 // Fonctions pour l'historique des activités
@@ -1006,6 +1123,7 @@ function logActivity(type, description, user = null) {
 
 async function searchProducts() {
     const query = document.getElementById('searchInput').value;
+    stockPageCourante = 1;
     try {
         const response = await fetch(`/api/produits?search=${encodeURIComponent(query)}`);
         const data = await response.json();
@@ -1019,6 +1137,7 @@ async function applyFilters() {
     const category = document.getElementById('categoryFilter').value;
     const stockStatus = document.getElementById('stockFilter').value;
     const search = document.getElementById('searchInput').value;
+    stockPageCourante = 1;
     
     let url = '/api/produits';
     let params = new URLSearchParams();
@@ -1042,11 +1161,19 @@ function openProductModal(productId = null) {
     const modal = document.getElementById('productModal');
     const title = document.getElementById('productModalTitle');
     
-    if (!productId) {
-        // Réinitialiser le formulaire seulement pour un nouveau produit
-        document.getElementById('productForm').reset();
-        document.getElementById('productId').value = '';
-        
+      if (!productId) {
+          // Réinitialiser le formulaire seulement pour un nouveau produit
+          document.getElementById('productForm').reset();
+          document.getElementById('productId').value = '';
+          // La date d'ajout par défaut est aujourd'hui
+          const champDateAjout = document.getElementById('productDateAjout');
+          if (champDateAjout) {
+              const aujourdhui = new Date();
+              champDateAjout.value = aujourdhui.getFullYear() + '-' +
+                  String(aujourdhui.getMonth() + 1).padStart(2, '0') + '-' +
+                  String(aujourdhui.getDate()).padStart(2, '0');
+          }
+          
         // Réinitialiser les prévisualisations d'images
         document.getElementById('image1Preview').innerHTML = `
             <div style="font-size: 40px; margin-bottom: 8px;">📷</div>
@@ -1102,6 +1229,10 @@ async function saveProduct() {
     formData.append('prix_vente', document.getElementById('productSalePrice').value);
     formData.append('quantite', document.getElementById('productQuantity').value);
     formData.append('stock_min', document.getElementById('productMinStock').value);
+    const champDateAjout = document.getElementById('productDateAjout');
+    if (champDateAjout && champDateAjout.value) {
+        formData.append('date_ajout', champDateAjout.value);
+    }
     formData.append('compatibilites', document.getElementById('productCompatibilities').value);
     
     // Gérer les images : priorité à l'upload, sinon capture webcam
@@ -1356,6 +1487,10 @@ async function editProduct(productId, viewOnly = false) {
             document.getElementById('productSalePrice').value = product.prix_vente;
             document.getElementById('productQuantity').value = product.quantite;
             document.getElementById('productMinStock').value = product.stock_min;
+            const champDateAjout = document.getElementById('productDateAjout');
+            if (champDateAjout) {
+                champDateAjout.value = dateAjoutPourChamp(product);
+            }
             document.getElementById('productCompatibilities').value = product.compatibilites || '';
             
             // Réinitialiser les prévisualisations d'images avant d'afficher les nouvelles

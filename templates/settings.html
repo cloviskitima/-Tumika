@@ -35,6 +35,10 @@
                         <i class="bi bi-database"></i>
                         <span>Données</span>
                     </a>
+                    <a href="#update" class="settings-nav-link">
+                        <i class="bi bi-cloud-arrow-up"></i>
+                        <span>Mise à jour</span>
+                    </a>
                     <a href="#github" class="settings-nav-link">
                         <i class="bi bi-github"></i>
                         <span>Sauvegarde GitHub</span>
@@ -417,6 +421,94 @@
                         <div id="siteStatus"></div>
                     </div>
                 </div>
+
+                <!-- Mise à jour -->
+                <div id="update" class="settings-section" style="display: none;">
+                    <h2 style="margin-bottom: 8px;">Mise à jour de l'application</h2>
+                    <p style="font-size: 0.9rem; color: var(--gray-500); margin-bottom: 20px;">
+                        Installez vous-même les dernières améliorations : choisissez le dossier de
+                        mise à jour reçu, analysez-le puis installez. Les fichiers sont remplacés
+                        en place et l'application redémarre automatiquement.
+                    </p>
+
+                    <div id="updInfo" style="margin-bottom: 24px; background: var(--gray-100); border-radius: 12px; padding: 14px 16px; font-size: 0.9rem; color: var(--gray-700);">
+                        <i class="bi bi-hourglass-split"></i> Chargement des informations…
+                    </div>
+
+                    <div class="ma-drop" id="maDrop" role="button" tabindex="0">
+                        <div class="ma-drop-ic">
+                            <div class="ma-drop-globe"><i class="bi bi-arrow-down-up"></i></div>
+                        </div>
+                        <div class="ma-drop-title">Choisir le dossier de mise à jour</div>
+                        <div class="ma-drop-hint">Cliquez ou glissez le dossier reçu (clé USB / dossier « MISE_A_JOUR »).<br>
+                            Il doit respecter la même structure que l'application : <code>templates/…</code> ,
+                            <code>app/routes/…</code> , <code>app/models/…</code> , <code>static/…</code></div>
+                        <input type="file" id="updFolder" webkitdirectory directory style="display: none;" multiple>
+                        <div id="updPicked" class="ma-picked"></div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 18px;">
+                        <button class="btn btn-outline-primary" type="button" onclick="analyserMiseAJour()">
+                            <i class="bi bi-search"></i>
+                            <span>Analyser le dossier</span>
+                        </button>
+                        <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--gray-600); font-size: 0.9rem; cursor: pointer;">
+                            <input type="checkbox" id="updForce">
+                            Forcer l'installation même si les fichiers sont identiques
+                        </label>
+                    </div>
+
+                    <div id="updResults" class="ma-results"></div>
+
+                    <div id="updApplyWrap" style="display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--gray-200);">
+                        <div class="ma-secure" style="margin-bottom: 14px;">
+                            <i class="bi bi-shield-check"></i>
+                            <span>Vos données sont protégées : la base de données (<code>motostock.db</code>) et
+                            aucune de vos informations ne seront jamais modifiées ni supprimées.</span>
+                        </div>
+                        <button class="btn btn-primary btn-lg" onclick="appliquerMiseAJour()" id="updApplyBtn" style="min-width: 240px;">
+                            <i class="bi bi-download"></i>
+                            <span>Installer la mise à jour</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Overlay de progression (plein écran) -->
+                <div class="ma-overlay" id="updOverlay" style="display: none;">
+                    <div class="ma-glass">
+                        <div class="ma-ring"></div>
+                        <div class="ma-overlay-title" id="updOverlayTitle">Installation…</div>
+                        <div class="ma-overlay-sub" id="updOverlaySub">Préparation des fichiers</div>
+                        <div class="ma-progress" id="updProgress"><div class="ma-progress-bar" id="updProgressBar"></div></div>
+                        <div class="ma-overlay-pill" id="updOverlayPill"></div>
+                    </div>
+                </div>
+
+                <!-- Dialogue de redémarrage -->
+                <div class="ma-overlay" id="updRestartModal" style="display: none;">
+                    <div class="ma-glass ma-restart">
+                        <div class="ma-success">
+                            <i class="bi bi-check-lg"></i>
+                        </div>
+                        <div class="ma-overlay-title" style="color: #0f172a;">Mise à jour installée</div>
+                        <div class="ma-overlay-sub" style="color: #475569;">
+                            Les fichiers ont été remplacés en place.<br>
+                            Redémarrez pour les appliquer.
+                        </div>
+                        <div class="ma-count" id="updCountBox">
+                            <span id="updCountNum">15</span> s
+                        </div>
+                        <div class="ma-restart-actions">
+                            <button class="btn btn-primary btn-lg" onclick="redemarrerMaintenant()" style="min-width: 200px; width: 100%;">
+                                <i class="bi bi-arrow-repeat"></i>
+                                <span>Redémarrer maintenant</span>
+                            </button>
+                            <button class="btn ma-btn-ghost btn-lg" onclick="redemarrerPlusTard()" style="width: 100%;">
+                                Plus tard (auto dans 60 s)
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -493,6 +585,146 @@
         display: inline;
     }
 }
+
+/* ================= MISE À JOUR ================= */
+.ma-drop {
+    border: 2px dashed #cbd5e1;
+    border-radius: 16px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+}
+.ma-drop:hover {
+    border-color: var(--primary, #2563eb);
+    background: #f8fafc;
+    transform: translateY(-1px);
+}
+.ma-drop.ma-drag {
+    border-color: var(--primary, #2563eb);
+    background: #eff6ff;
+}
+.ma-drop-ic { margin-bottom: 12px; }
+.ma-drop-globe {
+    width: 56px; height: 56px; margin: 0 auto;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ffffff, #dbeafe);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; color: var(--primary, #2563eb);
+    box-shadow: 0 8px 20px -6px rgba(37, 99, 235, 0.35);
+    animation: maFloat 3s ease-in-out infinite;
+}
+@keyframes maFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+.ma-drop-title { font-weight: 700; color: #0f172a; margin-bottom: 6px; font-size: 1.02rem; }
+.ma-drop-hint { font-size: 0.82rem; color: #64748b; line-height: 1.5; }
+.ma-drop code { background: #e2e8f0; border-radius: 4px; padding: 1px 5px; font-size: 0.78rem; }
+.ma-picked {
+    margin-top: 12px; font-size: 0.9rem; color: var(--primary, #2563eb);
+    font-weight: 600; display: none;
+}
+.ma-results { margin-top: 18px; }
+.ma-file-row {
+    display: flex; align-items: center; gap: 10px;
+    background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px;
+    padding: 8px 12px; margin-bottom: 6px; font-size: 0.88rem;
+    animation: maIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes maIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.ma-file-row .ma-ic { font-size: 1.05rem; }
+.ma-file-row .ma-path { flex: 1; font-family: ui-monospace, Consolas, monospace; color: #334155; overflow-wrap: anywhere; }
+.ma-file-row .ma-badge {
+    font-size: 0.72rem; font-weight: 700; border-radius: 999px;
+    padding: 2px 9px; white-space: nowrap;
+}
+.ma-badge.ma-new { background: #dcfce7; color: #15803d; }
+.ma-badge.ma-mod { background: #fef9c3; color: #a16207; }
+.ma-badge.ma-same { background: #e2e8f0; color: #475569; }
+.ma-badge.ma-ign { background: #fee2e2; color: #b91c1c; }
+.ma-summary {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 10px; padding: 8px 14px; border-radius: 999px;
+    font-size: 0.85rem; font-weight: 600;
+    background: #eff6ff; color: #1d4ed8;
+}
+.ma-empty {
+    margin-top: 16px; padding: 16px; border-radius: 12px;
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    color: #475569; font-size: 0.9rem; display: none;
+}
+.ma-secure {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: #ecfdf5; border: 1px solid #a7f3d0; color: #047857;
+    border-radius: 10px; padding: 10px 12px; font-size: 0.85rem;
+}
+.ma-secure i { font-size: 1.1rem; }
+.ma-secure code { background: #d1fae5; border-radius: 4px; padding: 1px 5px; }
+
+/* Overlay plein écran style iOS */
+.ma-overlay {
+    position: fixed; inset: 0; z-index: 1080;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    animation: maFade 0.25s ease;
+}
+@keyframes maFade { from { opacity: 0; } to { opacity: 1; } }
+.ma-glass {
+    background: rgba(255, 255, 255, 0.97);
+    border-radius: 20px;
+    box-shadow: 0 24px 60px -12px rgba(2, 6, 23, 0.35);
+    padding: 34px 36px;
+    width: min(400px, 92vw);
+    text-align: center;
+    animation: maPop 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes maPop { from { opacity: 0; transform: scale(0.92) translateY(10px); } to { opacity: 1; transform: none; } }
+.ma-ring {
+    width: 56px; height: 56px; margin: 0 auto 18px;
+    border-radius: 50%;
+    border: 5px solid rgba(100, 116, 139, 0.18);
+    border-top-color: #0284c7;
+    border-right-color: #0ea5e9;
+    animation: maSpin 0.7s linear infinite;
+}
+@keyframes maSpin { to { transform: rotate(360deg); } }
+.ma-overlay-title { font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 6px; }
+.ma-overlay-sub { font-size: 0.9rem; color: #475569; line-height: 1.5; margin-bottom: 16px; }
+.ma-progress {
+    height: 6px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin: 14px 0 10px;
+}
+.ma-progress-bar {
+    height: 100%; width: 0%; border-radius: 999px;
+    background: linear-gradient(90deg, #0284c7, #22d3ee);
+    transition: width 0.4s ease;
+}
+.ma-overlay-pill {
+    display: inline-block; font-size: 0.76rem; color: #64748b;
+    background: #f1f5f9; border-radius: 999px; padding: 3px 12px; margin-top: 8px;
+}
+.ma-success {
+    width: 72px; height: 72px; margin: 0 auto 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 25%, #34d399, #059669);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.2rem; color: #ffffff;
+    box-shadow: 0 12px 26px -8px rgba(5, 150, 105, 0.55);
+    animation: maPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ma-count {
+    margin: 14px 0 18px;
+    font-size: 1.5rem; font-weight: 800; color: #0284c7;
+    font-variant-numeric: tabular-nums;
+}
+.ma-restart-actions { display: flex; flex-direction: column; gap: 10px; }
+.ma-btn-ghost {
+    background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0;
+}
+.ma-btn-ghost:hover { background: #e2e8f0; color: #1e293b; }
 </style>
 
 {% endblock %}
@@ -1120,5 +1352,261 @@ async function pushDatabaseToGithub() {
         spinner.style.display = 'none';
     }
 }
+
+// ================= MISE À JOUR DE L'APPLICATION =================
+let updFiles = null;
+let updApplyPaths = [];
+let updFileList = null;
+let restartTimer = null;
+let restartLeft = 0;
+let autoRestartAllowed = false;
+let restartSkipped = false;
+
+function relPath(f) {
+    const p = (f.webkitRelativePath || f.name || '');
+    const parts = p.split(/[\\/]/);
+    return parts.slice(1).join('/') || parts[parts.length - 1] || '';
+}
+
+function formatBytes(n) {
+    if (n <= 0) return '0 o';
+    const u = ['o', 'Ko', 'Mo', 'Go'];
+    const i = Math.floor(Math.log10(n) / Math.log10(1024));
+    const x = n / Math.pow(1024, i);
+    return x.toFixed(i ? 1 : 0) + ' ' + u[i];
+}
+
+function setUpdOverlay(show, title, sub, pill) {
+    const o = document.getElementById('updOverlay');
+    if (!o) return;
+    o.style.display = show ? 'flex' : 'none';
+    if (title !== undefined) document.getElementById('updOverlayTitle').textContent = title;
+    if (sub !== undefined) document.getElementById('updOverlaySub').textContent = sub;
+    if (pill !== undefined) document.getElementById('updOverlayPill').textContent = pill;
+    const bar = document.getElementById('updProgressBar');
+    if (bar) bar.style.width = '0%';
+}
+
+function setUpdProgress(pct) {
+    const bar = document.getElementById('updProgressBar');
+    if (bar) bar.style.width = (Math.max(0, Math.min(100, pct))) + '%';
+}
+
+async function chargerInfoUpdate() {
+    const el = document.getElementById('updInfo');
+    if (!el) return;
+    try {
+        const r = await fetch('/settings/api/update/info');
+        const j = await r.json();
+        if (j.status !== 'success') {
+            el.innerHTML = '<i class="bi bi-exclamation-triangle text-warning"></i> Informations indisponibles.';
+            return;
+        }
+        autoRestartAllowed = !!j.auto_restart;
+        el.innerHTML = '<i class="bi bi-folder2-open text-primary"></i> Dossier de l\'application : <code>' + (j.root || '') + '</code><br>' +
+            (j.writable ? '<i class="bi bi-check-circle text-success"></i> Dossier accessible en écriture.' : '<i class="bi bi-exclamation-triangle text-warning"></i> Dossier non accessible en écriture.') +
+            ' — <b>' + (j.files || 0) + '</b> fichier(s) détecté(s).' +
+            (j.auto_restart ? ' — <span class="text-success">Redémarrage automatique activé (Windows local)</span>' : '');
+    } catch (e) {
+        el.innerHTML = '<i class="bi bi-exclamation-triangle text-warning"></i> Erreur : ' + e.message;
+    }
+}
+
+function analyserMiseAJour() {
+    const input = document.getElementById('updFolder');
+    const out = document.getElementById('updResults');
+    if (!input.files || !input.files.length) {
+        if (typeof showToast === 'function') showToast('Choisissez d\'abord le dossier de mise à jour', 'danger');
+        return;
+    }
+    const all = [];
+    for (const f of Array.from(input.files)) {
+        all.push({ path: relPath(f), size: f.size });
+    }
+    const picked = document.getElementById('updPicked');
+    if (picked) {
+        picked.textContent = all.length + ' fichier(s) sélectionné(s)';
+        picked.style.display = 'block';
+    }
+    (async () => {
+        try {
+            const res = await fetch('/settings/api/update/analyze', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ files: all })
+            });
+            const r = await res.json();
+            if (r.status !== 'success') {
+                if (typeof showToast === 'function') showToast('Analyse échouée : ' + (r.message || 'inconnu'), 'danger');
+                return;
+            }
+            updFiles = input.files;
+            updFileList = all;
+            const force = document.getElementById('updForce') ? document.getElementById('updForce').checked : false;
+            const changed = (r.nouveau || []).concat(r.modifie || []);
+            const same = r.identique || [];
+            const ign = r.ignore || [];
+            let html = '';
+            if (!changed.length && same.length && !force) {
+                html += '<div class="ma-empty" style="display:block;"><i class="bi bi-info-circle"></i> Tout est déjà à jour (' + same.length + ' fichier(s) identique(s)) — vous pouvez cocher « Forcer l\'installation » pour appliquer quand même.</div>';
+                html += same.slice(0, 30).map(f => '<div class="ma-file-row"><div class="ma-ic text-muted"><i class="bi bi-file-earmark-text"></i></div><div class="ma-path">' + f.path + '</div><div class="ma-badge ma-same">identique</div></div>').join('');
+                document.getElementById('updApplyWrap').style.display = 'none';
+            } else {
+                let list = changed.slice();
+                if (force) list = list.concat(same.map(x => ({path: x.path, status: 'identique-forcé'})));
+                if (!list.length) {
+                    html += '<div class="ma-empty" style="display:block;">Aucun fichier changeable à appliquer.</div>';
+                    document.getElementById('updApplyWrap').style.display = 'none';
+                } else {
+                    html += '<div class="ma-summary"><i class="bi bi-rocket-takeoff"></i> ' + list.length + ' fichier(s) à mettre à jour';
+                    if (changed.length) html += ' — ' + (r.nouveau || []).length + ' nouveau(x), ' + (r.modifie || []).length + ' modifié(s)';
+                    if (force && same.length) html += ' (dont ' + same.length + ' identique(s) forcé(s))';
+                    html += '</div>';
+                    html += list.map(f => {
+                        let ic = 'bi-pencil-square text-warning';
+                        let cls = 'ma-mod';
+                        let lab = 'modifié';
+                        if (f.status === 'nouveau') { ic = 'bi-plus-circle text-success'; cls = 'ma-new'; lab = 'nouveau'; }
+                        if (f.status === 'identique-forcé') { ic = 'bi-arrow-repeat text-muted'; cls = 'ma-same'; lab = 'identique (forcé)'; }
+                        return '<div class="ma-file-row"><div class="ma-ic"><i class="bi ' + ic + '"></i></div><div class="ma-path">' + f.path + '</div><div class="ma-badge ' + cls + '">' + lab + '</div></div>';
+                    }).join('');
+                    document.getElementById('updApplyWrap').style.display = 'block';
+                }
+            }
+            if (ign.length) {
+                html += '<div class="ma-summary mt-2" style="background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;"><i class="bi bi-eye-slash"></i> ' + ign.length + ' fichier(s) ignoré(s) (non autorisés)</div>';
+                html += ign.slice(0, 40).map(f => '<div class="ma-file-row"><div class="ma-ic text-danger"><i class="bi bi-file-x"></i></div><div class="ma-path">' + f.path + '</div><div class="ma-badge ma-ign">ignoré</div></div>').join('');
+            }
+            out.innerHTML = html;
+            // Liste effective des fichiers à installer (nouveaux + modifiés,
+            // et les identiques seulement si « Forcer » est coché).
+            updFiles = input.files;
+            updFileList = all;
+            const aAppliquer = (r.nouveau || []).concat(r.modifie || []);
+            if (force) aAppliquer.push.apply(aAppliquer, same);
+            updApplyPaths = aAppliquer.map(f => f.path);
+            if (typeof showToast === 'function') showToast('Analyse terminée : ' + aAppliquer.length + ' à appliquer', 'success');
+        } catch (e) {
+            if (typeof showToast === 'function') showToast('Erreur réseau : ' + e.message, 'danger');
+        }
+    })();
+}
+
+async function appliquerMiseAJour() {
+    if (!updFiles || !updFiles.length) return;
+    if (!updApplyPaths || !updApplyPaths.length) {
+        if (typeof showToast === 'function') showToast('Rien à installer : relancez l\'analyse.', 'warning');
+        return;
+    }
+    if (!confirm('Installer la mise à jour en place puis redémarrer ?')) return;
+    const fd = new FormData();
+    let n = 0;
+    let envoyes = 0;
+    for (const f of Array.from(updFiles)) {
+        const rel = relPath(f);
+        if (!rel) continue;
+        // On n'envoie que les fichiers réellement à installer.
+        if (updApplyPaths.indexOf(rel) === -1) continue;
+        fd.append('f' + (n++), f, rel);
+        envoyes++;
+    }
+    if (!envoyes) {
+        if (typeof showToast === 'function') showToast('Aucun fichier valide à installer.', 'warning');
+        return;
+    }
+    setUpdOverlay(true, 'Installation de la mise à jour…', 'Copie des fichiers en place', 'Sécurité : base de données non modifiée');
+    setUpdProgress(15);
+    try {
+        const res = await fetch('/settings/api/update/apply', { method: 'POST', body: fd });
+        setUpdProgress(70);
+        const r = await res.json();
+        if (r.status !== 'success') {
+            setUpdOverlay(false);
+            if (typeof showToast === 'function') showToast('Échec : ' + (r.message || 'inconnu'), 'danger');
+            return;
+        }
+        setUpdProgress(100);
+        setTimeout(() => {
+            setUpdOverlay(false);
+            document.getElementById('updRestartModal').style.display = 'flex';
+            startRestartCountdown();
+            if (typeof showToast === 'function') showToast(r.message || 'Mise à jour appliquée', 'success');
+        }, 400);
+    } catch (e) {
+        setUpdOverlay(false);
+        if (typeof showToast === 'function') showToast('Erreur réseau : ' + e.message, 'danger');
+    }
+}
+
+function startRestartCountdown() {
+    clearInterval(restartTimer);
+    restartSkipped = false;
+    restartLeft = 60;
+    updateRestartCount();
+    restartTimer = setInterval(() => {
+        restartLeft--;
+        updateRestartCount();
+        if (restartLeft <= 0 && !restartSkipped) {
+            clearInterval(restartTimer);
+            redemarrerMaintenant();
+        }
+    }, 1000);
+}
+
+function updateRestartCount() {
+    const c = document.getElementById('updCountNum');
+    if (c) c.textContent = restartLeft.toString();
+    const box = document.getElementById('updCountBox');
+    if (box) box.style.opacity = restartLeft <= 5 ? '1' : '1';
+}
+
+function redemarrerPlusTard() {
+    restartSkipped = true;
+    clearInterval(restartTimer);
+    document.getElementById('updRestartModal').style.display = 'none';
+    if (typeof showToast === 'function') showToast('Redémarrage différé — relancez l\'application pour appliquer la mise à jour', 'warning');
+}
+
+async function redemarrerMaintenant() {
+    restartSkipped = true;
+    clearInterval(restartTimer);
+    try {
+        const res = await fetch('/settings/api/update/restart', { method: 'POST' });
+        const j = await res.json();
+        if (j.status === 'success') {
+            document.getElementById('updRestartModal').style.display = 'none';
+            setUpdOverlay(true, 'Redémarrage…', 'L\'application va redémarrer dans quelques secondes', 'Veuillez patienter');
+            setUpdProgress(40);
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2500);
+            return;
+        }
+    } catch (e) {}
+    document.getElementById('updRestartModal').style.display = 'none';
+    if (typeof showToast === 'function') showToast('Échec du redémarrage automatique — fermez et relancez l\'application', 'danger');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    chargerInfoUpdate();
+    const drop = document.getElementById('maDrop');
+    const input = document.getElementById('updFolder');
+    if (drop && input) {
+        // Ouverture du sélecteur de dossier gérée ici uniquement (le HTML
+        // ne doit pas avoir de onclick inline, sinon deux sélecteurs s'ouvrent).
+        drop.addEventListener('click', () => input.click());
+        drop.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
+        });
+        drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('ma-drag'); });
+        drop.addEventListener('dragleave', () => drop.classList.remove('ma-drag'));
+        drop.addEventListener('drop', (e) => {
+            e.preventDefault(); drop.classList.remove('ma-drag');
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+                input.files = e.dataTransfer.files;
+                analyserMiseAJour();
+            }
+        });
+    }
+});
 </script>
 {% endblock %}

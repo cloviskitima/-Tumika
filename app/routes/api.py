@@ -363,6 +363,15 @@ def create_produit():
                 date_expiration = datetime.strptime(str(raw_expiration), '%Y-%m-%d').date()
             except (ValueError, TypeError):
                 date_expiration = None
+
+        # Date d'ajout en stock : par défaut aujourd'hui, l'utilisateur peut la corriger
+        date_ajout = date.today()
+        raw_ajout = data.get('date_ajout')
+        if raw_ajout:
+            try:
+                date_ajout = datetime.strptime(str(raw_ajout).strip()[:10], '%Y-%m-%d').date()
+            except (ValueError, TypeError):
+                date_ajout = date.today()
         
         produit_existant = Produit.query.filter(
             Produit.nom == nom,
@@ -385,6 +394,9 @@ def create_produit():
                 produit_existant.est_perissable = est_perissable
             if raw_expiration:
                 produit_existant.date_expiration = date_expiration
+            # Date d'ajout en stock : on ne l'écrase que si elle est explicitement fournie
+            if data.get('date_ajout') is not None:
+                produit_existant.date_ajout = date_ajout
 
             # Mettre à jour les images si de nouvelles sont fournies
             upload_folder = current_app.config['UPLOAD_FOLDER']
@@ -436,6 +448,7 @@ def create_produit():
             stock_min=int(data.get('stock_min', 5)),
             est_perissable=est_perissable,
             date_expiration=date_expiration,
+            date_ajout=date_ajout,
             compatibilites=data.get('compatibilites')
         )
         
@@ -511,7 +524,18 @@ def update_produit(id):
                 produit.date_expiration = None
         else:
             produit.date_expiration = None
-        
+
+        # Date d'ajout en stock (champ modifiable librement)
+        if data.get('date_ajout') is not None:
+            raw_ajout = str(data.get('date_ajout')).strip()[:10]
+            if raw_ajout:
+                try:
+                    produit.date_ajout = datetime.strptime(raw_ajout, '%Y-%m-%d').date()
+                except (ValueError, TypeError):
+                    produit.date_ajout = date.today()
+            else:
+                produit.date_ajout = None
+
         # Gestion des images
         upload_folder = current_app.config['UPLOAD_FOLDER']
         url_1 = enregistrer_image(request.files.get('image_1'), upload_folder)
@@ -717,6 +741,24 @@ def update_sale(id):
         if new_montant <= 0:
             return jsonify({'success': False, 'message': 'Montant invalide'}), 400
 
+        # ─── 0. Réductions éventuelles (le serveur recalcule le total) ───
+        reductions = None
+        if 'remise_articles' in data or 'remise_globale' in data or 'motif_remise' in data:
+            reductions = _calculer_reductions({
+                'produits': new_produits_data,
+                'taux_change': data.get('taux_change', vente.taux_change),
+                'devise': data.get('devise', vente.devise),
+                'remise_articles': data.get('remise_articles'),
+                'remise_globale': data.get('remise_globale'),
+                'motif_remise': data.get('motif_remise')
+            })
+            new_montant = reductions['total']
+            if new_montant <= 0:
+                return jsonify({
+                    'success': False,
+                    'message': 'Le montant de la vente est invalide (réduction trop élevée)'
+                }), 400
+
         # ─── 1. Construire un dict des anciennes quantités ───
         old_quantities = {}  # {produit_id: (ProduitVendu_obj, quantite_ancienne)}
         for pv in vente.produits_vendus:
@@ -762,6 +804,8 @@ def update_sale(id):
                 old_pv.quantite = new_qty
                 old_pv.prix_vente = produit.prix_vente
                 old_pv.prix_achat = produit.prix_achat
+                if reductions:
+                    old_pv.remise = reductions['lignes'].get(pid, 0.0)
             else:
                 # Nouveau produit ajouté à la vente
                 produit.quantite -= new_qty
@@ -770,7 +814,8 @@ def update_sale(id):
                     produit=produit,
                     quantite=new_qty,
                     prix_vente=produit.prix_vente,
-                    prix_achat=produit.prix_achat
+                    prix_achat=produit.prix_achat,
+                    remise=(reductions['lignes'].get(pid, 0.0) if reductions else 0.0)
                 )
                 db.session.add(new_pv)
 
@@ -779,6 +824,11 @@ def update_sale(id):
         vente.client = data.get('client', vente.client)
         vente.telephone = data.get('telephone', vente.telephone)
         vente.montant = new_montant
+        if reductions:
+            vente.remise_globale = reductions['remise_globale']
+            vente.remise_type = reductions['remise_type']
+            vente.remise_articles = reductions['remise_articles']
+            vente.motif_remise = reductions['motif']
 
         # ─── 6. Mettre à jour le mouvement de caisse lié (si paiement cash/completed) ───
         if vente.statut == 'completed' and vente.mode_paiement != 'credit':
@@ -1920,6 +1970,116 @@ def delete_sale(id):
             'message': f'Erreur lors de la suppression de la vente: {str(e)}'
         }), 400
 
+def _to_float(value, default=0.0):
+    """Conversion défensive en float (accepte '', None, '12,5')."""
+    try:
+        if value is None or value == '':
+            return default
+        return float(str(value).replace(',', '.').replace(' ', ''))
+    except (TypeError, ValueError):
+        return default
+
+
+def _calculer_reductions(data):
+    """Calcule les réductions côté serveur.
+
+    Le navigateur n'envoie que des intentions (pourcentages / montants par ligne) ;
+    le total de la vente est systématiquement recalculé ici pour qu'un client
+    ne puisse pas envoyer un montant arbitraire.
+
+    Clés attendues dans ``data`` :
+        produits            : [{id, quantite}]
+        remise_articles     : {produit_id: {type: 'pourcentage'|'montant', valeur: nb}}
+        remise_globale      : {type: 'pourcentage'|'montant', valeur: nb}
+        motif_remise        : texte libre
+    """
+    produits = data.get('produits', []) or []
+    taux_change = _to_float(data.get('taux_change'), 0.0) or 1.0
+    devise = (data.get('devise') or 'XAF').upper()
+
+    # ── 1. Sous-total brut, recalculé depuis les prix en base ──
+    lignes = {}
+    sous_total = 0.0
+    for item in produits:
+        try:
+            produit_id = int(item.get('id'))
+            quantite = int(item.get('quantite', 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if quantite <= 0:
+            continue
+        produit = Produit.query.get(produit_id)
+        if not produit:
+            continue
+        ligne_brute = float(produit.prix_vente or 0.0) * quantite
+        lignes[produit_id] = {
+            'brut': ligne_brute,
+            'remise': 0.0,
+            'net': ligne_brute,
+            'devise_produit': 'USD' if (produit.devise or '').upper() == 'USD' else devise,
+        }
+        # Conversion dans la devise de facturation
+        if devise == 'USD' and lignes[produit_id]['devise_produit'] != 'USD':
+            sous_total += ligne_brute / taux_change
+        elif devise != 'USD' and lignes[produit_id]['devise_produit'] == 'USD':
+            sous_total += ligne_brute * taux_change
+        else:
+            sous_total += ligne_brute
+
+    # ── 2. Réductions accordées article par article ──
+    remise_articles_total = 0.0
+    remises_demandees = data.get('remise_articles') or {}
+    if isinstance(remises_demandees, dict):
+        for produit_id, params in remises_demandees.items():
+            try:
+                cle = int(produit_id)
+            except (TypeError, ValueError):
+                continue
+            if cle not in lignes or not isinstance(params, dict):
+                continue
+            valeur = _to_float(params.get('valeur'), 0.0)
+            if valeur <= 0:
+                continue
+            brut = lignes[cle]['brut']
+            if params.get('type') == 'pourcentage':
+                remise = brut * min(valeur, 100.0) / 100.0
+            else:
+                remise = valeur
+            remise = min(max(remise, 0.0), brut)  # jamais plus que la ligne
+            lignes[cle]['remise'] = round(remise, 2)
+            lignes[cle]['net'] = round(brut - remise, 2)
+            remise_articles_total += remise
+
+    net_apres_articles = max(0.0, sous_total - remise_articles_total)
+
+    # ── 3. Réduction globale (sur le reste à payer) ──
+    globale = data.get('remise_globale') or {}
+    remise_globale = 0.0
+    remise_type = 'montant'
+    if isinstance(globale, dict):
+        valeur = _to_float(globale.get('valeur'), 0.0)
+        remise_type = 'pourcentage' if globale.get('type') == 'pourcentage' else 'montant'
+        if valeur > 0:
+            if remise_type == 'pourcentage':
+                remise_globale = net_apres_articles * min(valeur, 100.0) / 100.0
+            else:
+                remise_globale = valeur
+            remise_globale = min(max(remise_globale, 0.0), net_apres_articles)
+
+    total = round(max(0.0, net_apres_articles - remise_globale), 2)
+    motif = str(data.get('motif_remise') or '').strip()[:255] or None
+
+    return {
+        'total': total,
+        'sous_total': round(sous_total, 2),
+        'remise_articles': round(remise_articles_total, 2),
+        'remise_globale': round(remise_globale, 2),
+        'remise_type': remise_type,
+        'motif': motif,
+        'lignes': {k: v['remise'] for k, v in lignes.items() if v['remise'] > 0},
+    }
+
+
 @api_bp.route('/ventes', methods=['POST'])
 def create_sale():
     """Crée une nouvelle vente"""
@@ -1932,9 +2092,7 @@ def create_sale():
         if not produits_data:
             return jsonify({'success': False, 'message': 'Aucun produit sélectionné'}), 400
 
-        montant = float(data.get('montant', 0))
-        if montant <= 0:
-            return jsonify({'success': False, 'message': 'Montant de vente invalide'}), 400
+        reductions = _calculer_reductions(data)
 
         mode_paiement = data.get('mode_paiement', 'cash')
         statut = 'pending' if mode_paiement == 'credit' else 'completed'
@@ -1944,12 +2102,16 @@ def create_sale():
         vente = Vente(
             client=data.get('client'),
             telephone=data.get('telephone'),
-            montant=montant,
+            montant=reductions['total'],
             mode_paiement=mode_paiement,
             statut=statut,
             devise=devise,
             taux_change=taux_change,
             date_echeance=datetime.fromisoformat(data.get('date_echeance')) if data.get('date_echeance') else None,
+            remise_globale=reductions['remise_globale'],
+            remise_type=reductions['remise_type'],
+            remise_articles=reductions['remise_articles'],
+            motif_remise=reductions['motif'],
             user_id=session.get('user_id')
         )
         db.session.add(vente)
@@ -1985,9 +2147,18 @@ def create_sale():
                 produit=produit,
                 quantite=quantite,
                 prix_vente=produit.prix_vente,
-                prix_achat=produit.prix_achat
+                prix_achat=produit.prix_achat,
+                remise=reductions['lignes'].get(produit_id, 0.0)
             )
             db.session.add(produit_vendu)
+
+        montant = reductions['total']
+        if montant <= 0:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'message': 'Le montant de la vente est invalide (réduction trop élevée)'
+            }), 400
 
         if mode_paiement == 'cash':
             db.session.flush()

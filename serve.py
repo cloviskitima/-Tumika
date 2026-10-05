@@ -10,6 +10,7 @@ import os
 import socket
 import sys
 import threading
+import time
 import webbrowser
 
 from app import create_app
@@ -52,10 +53,24 @@ def _ouvrir_navigateur():
 
 
 if __name__ == '__main__':
+    # Quand l'application est relancée par une mise à jour, l'ancien processus
+    # peut mettre une seconde ou deux à libérer le port. On attend au lieu
+    # d'abandonner : c'est ce qui faisait échouer le redémarrage automatique.
+    try:
+        ATTENTE_PORT = int(os.environ.get('MOTOSTOCK_WAIT_PORT', '0'))
+    except (TypeError, ValueError):
+        ATTENTE_PORT = 0
+
     if _port_occupe(PORT):
-        print('MotoStockIA est déjà en cours d\'exécution sur %s' % URL)
-        _ouvrir_navigateur()
-        sys.exit(0)
+        if ATTENTE_PORT > 0:
+            print('Port %d encore occupé, attente de sa libération (%d s)...' % (PORT, ATTENTE_PORT))
+            limite = time.time() + ATTENTE_PORT
+            while time.time() < limite and _port_occupe(PORT):
+                time.sleep(0.5)
+        if _port_occupe(PORT):
+            print('MotoStockIA est déjà en cours d\'exécution sur %s' % URL)
+            _ouvrir_navigateur()
+            sys.exit(0)
 
     print('=' * 52)
     print('  MotoStockIA #TUMIKA  —  Serveur Waitress')

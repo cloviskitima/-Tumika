@@ -31,6 +31,7 @@ import os
 import shutil
 import sqlite3
 import tempfile
+import threading
 import time
 from datetime import datetime
 
@@ -334,7 +335,39 @@ def sync_status(app=None):
     }
 
 
+_verrou_sync = threading.RLock()
+_verrou_etat = threading.Lock()
+_etat_sync = {'actif': 0}
+
+
+def sync_en_cours():
+    """Vrai si une réécriture complète de la base est en cours.
+
+    Les tâches de fond (rapports email, etc.) l'utilisent pour patienter au
+    lieu d'être bloquées par SQLite pendant la fusion.
+    """
+    with _verrou_etat:
+        return _etat_sync['actif'] > 0
+
+
 def apply_backup_file(file_path, app=None):
+    """Fusionne un fichier SQLite dans la base live du site, une seule fois à la fois.
+
+    La fusion réécrit le fichier de base entier : deux fusions simultanées
+    (minuterie + bouton ou webhook) se marcheraient dessus et provoqueraient
+    « database is locked ». Ce verrou les sérialise.
+    """
+    with _verrou_etat:
+        _etat_sync['actif'] += 1
+    try:
+        with _verrou_sync:
+            return _appliquer_fichier_sans_verrou(file_path, app=app)
+    finally:
+        with _verrou_etat:
+            _etat_sync['actif'] -= 1
+
+
+def _appliquer_fichier_sans_verrou(file_path, app=None):
     """Fusionne un fichier SQLite dans la base live du site.
 
     Rien n'est écrasé : les lignes du fichier sont insérées ou mises à jour par
